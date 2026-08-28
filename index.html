@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="fr" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Des outils pour Roll20 — bornes du zoom, grille hors carte, marqueurs de jeton, retouches du tchat. Firefox et Chrome.">
+        <meta name="description" content="A Roll20 extension. Zoom range, grid beyond the page, custom token markers, chat footer fixes. Firefox and Chrome.">
       
       
         <meta name="author" content="igneefleur">
@@ -80,8 +80,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#des-outils-pour-roll20" class="md-skip">
-          Aller au contenu
+        <a href="#vttinker" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -95,7 +95,7 @@
   
 
 <header class="md-header md-header--shadow" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="En-tête">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="." title="VTTinker" class="md-header__button md-logo" aria-label="VTTinker" data-md-component="logo">
       
   
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Installer
+              Install
             
           </span>
         </div>
@@ -129,9 +129,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Suivre le système"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Follow system"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Suivre le système" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Follow system" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
       </label>
     
@@ -139,9 +139,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Passer en sombre"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Passer en sombre" for="__palette_2" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark" for="__palette_2" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -149,9 +149,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Suivre le système"  type="radio" name="__palette" id="__palette_2">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Follow system"  type="radio" name="__palette" id="__palette_2">
     
-      <label class="md-header__button md-icon" title="Suivre le système" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Follow system" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -174,16 +174,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Rechercher" placeholder="Rechercher" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Recherche">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Effacer" aria-label="Effacer" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -194,7 +194,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Initialisation de la recherche
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -206,7 +206,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/igneefleur/vttinker" title="Aller au dépôt" class="md-source" data-md-component="source">
+        <a href="https://github.com/igneefleur/vttinker" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -256,7 +256,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/igneefleur/vttinker" title="Aller au dépôt" class="md-source" data-md-component="source">
+      <a href="https://github.com/igneefleur/vttinker" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -292,7 +292,7 @@
   <span class="md-ellipsis">
     
   
-    Installer
+    Install
   
 
     
@@ -310,7 +310,7 @@
   <span class="md-ellipsis">
     
   
-    Installer
+    Install
   
 
     
@@ -322,7 +322,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Table des matières">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -331,15 +331,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table des matières
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#firefox-signe-par-mozilla" class="md-nav__link">
+  <a href="#firefox-signed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Firefox signé par Mozilla
+        Firefox signed
       
     </span>
   </a>
@@ -347,10 +347,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chrome-mode-developpeur" class="md-nav__link">
+  <a href="#chrome-developer-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chrome mode développeur
+        Chrome developer mode
       
     </span>
   </a>
@@ -358,10 +358,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#installer-sur-firefox" class="md-nav__link">
+  <a href="#install-on-firefox" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installer sur Firefox
+        Install on Firefox
       
     </span>
   </a>
@@ -369,10 +369,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#installer-sur-chrome" class="md-nav__link">
+  <a href="#install-on-chrome" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Installer sur Chrome
+        Install on Chrome
       
     </span>
   </a>
@@ -380,10 +380,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ce-quelle-touche-et-ce-quelle-ne-touche-pas" class="md-nav__link">
+  <a href="#access" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ce qu'elle touche, et ce qu'elle ne touche pas
+        Access
       
     </span>
   </a>
@@ -412,7 +412,7 @@
   <span class="md-ellipsis">
     
   
-    Ce que ça fait
+    Features
   
 
     
@@ -439,7 +439,7 @@
   <span class="md-ellipsis">
     
   
-    Questions
+    FAQ
   
 
     
@@ -473,66 +473,47 @@
 
 <div class="vttk-banniere">
 <p><span class="vttk-version">version 0.50.0</span></p>
-<h1 id="des-outils-pour-roll20">Des outils pour Roll20<a class="headerlink" href="#des-outils-pour-roll20" title="Permanent link">&para;</a></h1>
-<p>Les bornes du zoom, la grille au-delà de la carte, vos propres marqueurs de
-jeton, et un tchat qui ne se marche plus sur les pieds. Chaque outil s'allume et
-s'éteint séparément. Rien ne s'active tout seul.</p>
+<h1 id="vttinker">VTTinker<a class="headerlink" href="#vttinker" title="Permanent link">&para;</a></h1>
+<p>A browser extension for Roll20. It raises the zoom limits, draws the grid past
+the map edge, lets you add your own token markers, and fixes the chat footer.
+Each tool has its own on/off switch.</p>
 </div>
 <div class="vttk-paquets">
 <div class="vttk-paquet">
-<h3 id="firefox-signe-par-mozilla">Firefox <span class="etat signe">signé par Mozilla</span><a class="headerlink" href="#firefox-signe-par-mozilla" title="Permanent link">&para;</a></h3>
-<p>S'installe d'un clic et reste installé. Firefox vérifie la signature à
-l'ouverture du fichier ; il n'y a rien à régler et rien à réactiver à chaque
-démarrage.</p>
-<p><a class="vttk-bouton" download="download" href="vttinker-firefox.xpi">Télécharger le .xpi</a></p>
+<h3 id="firefox-signed">Firefox <span class="etat signe">signed</span><a class="headerlink" href="#firefox-signed" title="Permanent link">&para;</a></h3>
+<p>Signed by Mozilla. Install it once and Firefox keeps it.</p>
+<p><a class="vttk-bouton" download="download" href="vttinker-firefox.xpi">Download .xpi</a></p>
 </div>
 <div class="vttk-paquet">
-<h3 id="chrome-mode-developpeur">Chrome <span class="etat">mode développeur</span><a class="headerlink" href="#chrome-mode-developpeur" title="Permanent link">&para;</a></h3>
-<p>Chrome n'installe que ce qui vient de son magasin, ou ce qu'on lui donne à la
-main. Le paquet est le même code ; il se charge en trois gestes, et il faut le
-recharger si vous videz votre profil.</p>
-<p><a class="vttk-bouton creux" download="download" href="vttinker-chrome.zip">Télécharger le .zip</a></p>
+<h3 id="chrome-developer-mode">Chrome <span class="etat">developer mode</span><a class="headerlink" href="#chrome-developer-mode" title="Permanent link">&para;</a></h3>
+<p>Not on the Chrome Web Store, so it loads as an unpacked extension.</p>
+<p><a class="vttk-bouton creux" download="download" href="vttinker-chrome.zip">Download .zip</a></p>
 </div>
 </div>
-<h2 id="installer-sur-firefox">Installer sur Firefox<a class="headerlink" href="#installer-sur-firefox" title="Permanent link">&para;</a></h2>
+<h2 id="install-on-firefox">Install on Firefox<a class="headerlink" href="#install-on-firefox" title="Permanent link">&para;</a></h2>
 <ol class="vttk-etapes">
-<li><strong>Téléchargez le fichier <code>.xpi</code></strong> avec le bouton ci-dessus. Firefox
-propose parfois de l'ouvrir directement : c'est ce qu'on veut.</li>
-<li><strong>Si rien ne se passe</strong>, ouvrez <code>about:addons</code>, cliquez la roue
-dentée en haut à droite, puis <strong>Installer un module depuis un fichier</strong>, et
-choisissez le <code>.xpi</code> téléchargé.</li>
-<li><strong>Acceptez la permission demandée.</strong> Il n'y en a qu'une —
-<em>stockage</em> — et elle sert à retenir vos réglages sur votre machine.</li>
-<li><strong>Ouvrez une partie Roll20.</strong> Une section <strong>VTTK</strong> apparaît en bas
-de la colonne d'outils, à gauche.</li>
+<li>Download the <code>.xpi</code> file.</li>
+<li>Open it. If nothing happens, go to <code>about:addons</code>, click the gear
+icon, choose <strong>Install Add-on From File</strong>, and pick the downloaded file.</li>
+<li>Accept the permission request. There is one: <em>storage</em>.</li>
+<li>Open a Roll20 game. A <strong>VTTK</strong> section appears at the bottom of the
+left toolbar.</li>
 </ol>
-<div class="admonition note">
-<p class="admonition-title">Pourquoi une signature</p>
-<p>Depuis Firefox 48, une extension non signée ne s'installe pas. Le paquet est
-donc envoyé à Mozilla, qui le vérifie et le signe. Il n'est pas publié sur
-leur magasin : la signature dit seulement qu'il vient bien d'ici et qu'il
-n'a pas été modifié en route.</p>
-</div>
-<h2 id="installer-sur-chrome">Installer sur Chrome<a class="headerlink" href="#installer-sur-chrome" title="Permanent link">&para;</a></h2>
+<h2 id="install-on-chrome">Install on Chrome<a class="headerlink" href="#install-on-chrome" title="Permanent link">&para;</a></h2>
 <ol class="vttk-etapes">
-<li><strong>Téléchargez le <code>.zip</code></strong> et <strong>décompressez-le</strong> dans un dossier que
-vous garderez — Chrome lit le dossier à chaque démarrage, il ne le recopie
-pas.</li>
-<li><strong>Ouvrez <code>chrome://extensions</code></strong> et activez <strong>Mode développeur</strong>, en
-haut à droite.</li>
-<li><strong>Cliquez « Charger l'extension non empaquetée »</strong> et désignez le
-dossier décompressé — celui qui contient <code>manifest.json</code>.</li>
-<li><strong>Ouvrez une partie Roll20.</strong> La section <strong>VTTK</strong> apparaît dans la
-colonne d'outils.</li>
+<li>Download the <code>.zip</code> and extract it to a folder you intend to keep.
+Chrome reads that folder on every startup.</li>
+<li>Go to <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</li>
+<li>Click <strong>Load unpacked</strong> and select the extracted folder, the one
+containing <code>manifest.json</code>.</li>
+<li>Open a Roll20 game. The <strong>VTTK</strong> section appears in the toolbar.</li>
 </ol>
 <div class="admonition warning">
-<p class="admonition-title">Ce que le mode développeur implique</p>
-<p>Chrome affiche un bandeau d'avertissement à chaque démarrage, et peut
-désactiver l'extension si vous réinitialisez votre profil. C'est le prix à
-payer pour installer une extension qui ne vient pas du Chrome Web Store —
-ce n'est pas un défaut du paquet.</p>
+<p class="admonition-title">Developer mode</p>
+<p>Chrome shows a warning banner at startup and may disable unpacked extensions
+when you reset your profile. Reload the folder if that happens.</p>
 </div>
-<h2 id="ce-quelle-touche-et-ce-quelle-ne-touche-pas">Ce qu'elle touche, et ce qu'elle ne touche pas<a class="headerlink" href="#ce-quelle-touche-et-ce-quelle-ne-touche-pas" title="Permanent link">&para;</a></h2>
+<h2 id="access">Access<a class="headerlink" href="#access" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -542,30 +523,28 @@ ce n'est pas un défaut du paquet.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Permission demandée</strong></td>
-<td><code>stockage</code>, et rien d'autre</td>
+<td>Permissions</td>
+<td><code>storage</code></td>
 </tr>
 <tr>
-<td><strong>Sites concernés</strong></td>
-<td><code>app.roll20.net/editor</code> seulement</td>
+<td>Sites</td>
+<td><code>app.roll20.net/editor</code></td>
 </tr>
 <tr>
-<td><strong>Ce qui sort de votre machine</strong></td>
-<td>rien — aucun appel réseau, sauf les images de marqueurs que <strong>vous</strong> ajoutez</td>
+<td>Network</td>
+<td>none, except images you add as markers</td>
 </tr>
 <tr>
-<td><strong>Ce qu'elle écrit chez Roll20</strong></td>
-<td>les marqueurs de jeton que vous posez, et rien d'autre</td>
+<td>Written to Roll20</td>
+<td>token status markers you place</td>
 </tr>
 <tr>
-<td><strong>Ce qu'elle range chez vous</strong></td>
-<td>vos réglages et votre palette, dans le stockage local du navigateur</td>
+<td>Stored locally</td>
+<td>your settings and marker palette</td>
 </tr>
 </tbody>
 </table>
-<p>Le code est lisible dans son intégralité sur
-<a href="https://github.com/igneefleur/vttinker">GitHub</a> — commentaires compris, et ils
-racontent ce qui a été mesuré.</p>
+<p>Source: <a href="https://github.com/igneefleur/vttinker">github.com/igneefleur/vttinker</a></p>
 
 
 
@@ -594,7 +573,7 @@ racontent ce qui a été mesuré.</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Retour en haut de la page
+  Back to top
 </button>
         
       </main>
@@ -606,7 +585,7 @@ racontent ce qui a été mesuré.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Tous droits réservés — le code est lisible, il n'est pas libre de droits.
+      All rights reserved. The code is readable; it is not open source.
     </div>
   
   
@@ -624,7 +603,7 @@ racontent ce qui a été mesuré.</p>
     
     
     
-    <a href="https://github.com/igneefleur/vttinker" target="_blank" rel="noopener" title="Le code" class="md-social__link">
+    <a href="https://github.com/igneefleur/vttinker" target="_blank" rel="noopener" title="Source" class="md-social__link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
     </a>
   
@@ -643,7 +622,7 @@ racontent ce qui a été mesuré.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.top", "content.code.copy", "toc.integrate"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copi\u00e9 dans le presse-papier", "clipboard.copy": "Copier dans le presse-papier", "search.result.more.one": "1 de plus sur cette page", "search.result.more.other": "# de plus sur cette page", "search.result.none": "Aucun document trouv\u00e9", "search.result.one": "1 document trouv\u00e9", "search.result.other": "# documents trouv\u00e9s", "search.result.placeholder": "Taper pour d\u00e9marrer la recherche", "search.result.term.missing": "Non trouv\u00e9", "select.version": "S\u00e9lectionner la version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.top", "content.code.copy", "toc.integrate"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="assets/javascripts/bundle.d7400e89.min.js"></script>

@@ -1,12 +1,12 @@
 
 <!doctype html>
-<html lang="fr" class="no-js">
+<html lang="en" class="no-js">
   <head>
     
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Des outils pour Roll20 — bornes du zoom, grille hors carte, marqueurs de jeton, retouches du tchat. Firefox et Chrome.">
+        <meta name="description" content="A Roll20 extension. Zoom range, grid beyond the page, custom token markers, chat footer fixes. Firefox and Chrome.">
       
       
         <meta name="author" content="igneefleur">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Ce que ça fait - VTTinker</title>
+        <title>Features - VTTinker</title>
       
     
     
@@ -82,8 +82,8 @@
     <div data-md-component="skip">
       
         
-        <a href="#ce-que-ca-fait" class="md-skip">
-          Aller au contenu
+        <a href="#features" class="md-skip">
+          Skip to content
         </a>
       
     </div>
@@ -97,7 +97,7 @@
   
 
 <header class="md-header md-header--shadow" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="En-tête">
+  <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="VTTinker" class="md-header__button md-logo" aria-label="VTTinker" data-md-component="logo">
       
   
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Ce que ça fait
+              Features
             
           </span>
         </div>
@@ -131,9 +131,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Suivre le système"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Follow system"  type="radio" name="__palette" id="__palette_0">
     
-      <label class="md-header__button md-icon" title="Suivre le système" for="__palette_1" hidden>
+      <label class="md-header__button md-icon" title="Follow system" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
       </label>
     
@@ -141,9 +141,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Passer en sombre"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark"  type="radio" name="__palette" id="__palette_1">
     
-      <label class="md-header__button md-icon" title="Passer en sombre" for="__palette_2" hidden>
+      <label class="md-header__button md-icon" title="Switch to dark" for="__palette_2" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -151,9 +151,9 @@
     
     
     
-    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Suivre le système"  type="radio" name="__palette" id="__palette_2">
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Follow system"  type="radio" name="__palette" id="__palette_2">
     
-      <label class="md-header__button md-icon" title="Suivre le système" for="__palette_0" hidden>
+      <label class="md-header__button md-icon" title="Follow system" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
       </label>
     
@@ -176,16 +176,16 @@
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Rechercher" placeholder="Rechercher" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
       <label class="md-search__icon md-icon" for="__search">
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
         
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
       </label>
-      <nav class="md-search__options" aria-label="Recherche">
+      <nav class="md-search__options" aria-label="Search">
         
-        <button type="reset" class="md-search__icon md-icon" title="Effacer" aria-label="Effacer" tabindex="-1">
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
           
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
@@ -196,7 +196,7 @@
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
-            Initialisation de la recherche
+            Initializing search
           </div>
           <ol class="md-search-result__list" role="presentation"></ol>
         </div>
@@ -208,7 +208,7 @@
     
     
       <div class="md-header__source">
-        <a href="https://github.com/igneefleur/vttinker" title="Aller au dépôt" class="md-source" data-md-component="source">
+        <a href="https://github.com/igneefleur/vttinker" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -256,7 +256,7 @@
   </label>
   
     <div class="md-nav__source">
-      <a href="https://github.com/igneefleur/vttinker" title="Aller au dépôt" class="md-source" data-md-component="source">
+      <a href="https://github.com/igneefleur/vttinker" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
@@ -283,7 +283,7 @@
   <span class="md-ellipsis">
     
   
-    Installer
+    Install
   
 
     
@@ -319,7 +319,7 @@
   <span class="md-ellipsis">
     
   
-    Ce que ça fait
+    Features
   
 
     
@@ -337,7 +337,7 @@
   <span class="md-ellipsis">
     
   
-    Ce que ça fait
+    Features
   
 
     
@@ -349,7 +349,7 @@
       
         
 
-<nav class="md-nav md-nav--secondary" aria-label="Table des matières">
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
   
   
   
@@ -358,15 +358,15 @@
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
-      Table des matières
+      Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bornes-du-zoom" class="md-nav__link">
+  <a href="#zoom-range" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Bornes du zoom
+        Zoom range
       
     </span>
   </a>
@@ -374,10 +374,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#grille-hors-carte" class="md-nav__link">
+  <a href="#grid-beyond-the-page" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Grille hors carte
+        Grid beyond the page
       
     </span>
   </a>
@@ -385,10 +385,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#marqueurs-personnalises" class="md-nav__link">
+  <a href="#custom-markers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Marqueurs personnalisés
+        Custom markers
       
     </span>
   </a>
@@ -396,10 +396,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pied-de-chat" class="md-nav__link">
+  <a href="#chat-footer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pied de chat
+        Chat footer
       
     </span>
   </a>
@@ -407,10 +407,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#les-deux-moteurs-de-roll20" class="md-nav__link">
+  <a href="#roll20s-two-renderers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Les deux moteurs de Roll20
+        Roll20's two renderers
       
     </span>
   </a>
@@ -418,10 +418,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ce-que-ca-coute" class="md-nav__link">
+  <a href="#cost" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ce que ça coûte
+        Cost
       
     </span>
   </a>
@@ -450,7 +450,7 @@
   <span class="md-ellipsis">
     
   
-    Questions
+    FAQ
   
 
     
@@ -480,55 +480,46 @@
 
 
 
-<h1 id="ce-que-ca-fait">Ce que ça fait<a class="headerlink" href="#ce-que-ca-fait" title="Permanent link">&para;</a></h1>
-<p>Quatre outils, quatre interrupteurs. Ils se règlent depuis la section <strong>VTTK</strong> de
-la colonne d'outils, une fois la partie ouverte.</p>
-<p>Aucun ne s'allume tout seul, et aucun ne laisse de trace derrière lui quand on
-l'éteint — c'est une contrainte que le code se donne, et qu'un banc d'essai
-vérifie à chaque modification.</p>
+<h1 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h1>
+<p>Four tools, each with its own switch in the <strong>VTTK</strong> section of the toolbar.</p>
 <div class="vttk-modules">
 <div class="vttk-module">
-<h3 id="bornes-du-zoom">Bornes du zoom<a class="headerlink" href="#bornes-du-zoom" title="Permanent link">&para;</a></h3>
-<p>Roll20 s'arrête à 10 % et à 250 %. Vous choisissez vos propres bornes, et le
-zoom les respecte — à la molette, aux boutons, au glisseur.</p>
-<p>Dans sa plage à lui, Roll20 fait tout son travail sans qu'on y touche. On ne
-prend la main <strong>qu'au-delà</strong>, et le premier cran hors bornes vaut exactement le
-dernier cran en deçà : la jonction ne se sent pas.</p>
+<h3 id="zoom-range">Zoom range<a class="headerlink" href="#zoom-range" title="Permanent link">&para;</a></h3>
+<p>Roll20 stops at 10% and 250%. Set your own minimum and maximum. The mouse wheel,
+the buttons and the slider all respect them.</p>
+<p>Inside Roll20's own range nothing is intercepted. Past it, the step size matches
+Roll20's last step, so the transition is not noticeable.</p>
 </div>
 <div class="vttk-module">
-<h3 id="grille-hors-carte">Grille hors carte<a class="headerlink" href="#grille-hors-carte" title="Permanent link">&para;</a></h3>
-<p>La grille de Roll20 s'arrête au bord de la page. Celle-ci la prolonge d'autant
-de cases que vous voulez, dans le même alignement.</p>
-<p>Les cinq types de grille sont pris en charge — carrés, hexagones par colonnes ou
-par rangées, isométrique, dimétrique — parce que c'est le dessin de Roll20
-lui-même qui est employé, pas une imitation.</p>
+<h3 id="grid-beyond-the-page">Grid beyond the page<a class="headerlink" href="#grid-beyond-the-page" title="Permanent link">&para;</a></h3>
+<p>Roll20 stops drawing the grid at the page edge. This continues it for a chosen
+number of cells, aligned with the existing grid.</p>
+<p>All five grid types work: square, hex by column, hex by row, isometric,
+dimetric. Roll20's own drawing code is reused rather than reimplemented.</p>
 </div>
 <div class="vttk-module">
-<h3 id="marqueurs-personnalises">Marqueurs personnalisés<a class="headerlink" href="#marqueurs-personnalises" title="Permanent link">&para;</a></h3>
-<p>Roll20 propose quarante-sept marqueurs de jeton. Ajoutez les vôtres, avec
-l'adresse de n'importe quelle image.</p>
-<p><strong>Tout le monde les voit</strong>, extension ou pas : le marqueur est écrit dans la
-partie comme n'importe quel autre, et l'adresse de l'image voyage avec lui. Vos
-camarades n'ont rien à installer.</p>
-<p>Ils se posent sur autant de jetons qu'on veut d'un seul geste, portent un
-compteur, et se rangent dans une palette qu'on trie à la souris.</p>
+<h3 id="custom-markers">Custom markers<a class="headerlink" href="#custom-markers" title="Permanent link">&para;</a></h3>
+<p>Roll20 ships 47 token status markers. Add your own with any image URL.</p>
+<p>Other players see them without installing anything. The marker is written to the
+game as a normal status marker, with the image address in the tag, so Roll20
+draws it for everyone.</p>
+<p>Markers can be applied to several tokens at once, carry a counter, and are
+reorderable by drag.</p>
 </div>
 <div class="vttk-module">
-<h3 id="pied-de-chat">Pied de chat<a class="headerlink" href="#pied-de-chat" title="Permanent link">&para;</a></h3>
-<p>La ligne du bas du tchat était mal alignée — « A » et « Envoyer » ne tombaient
-pas à la même hauteur. C'est corrigé, et un choix d'émoji s'y ajoute.</p>
-<p>Les émojis sont ceux d'Unicode, rangés dans leurs huit vraies catégories
-officielles. Rien de personnalisé : <strong>tout le monde les lit</strong>, même sans
-l'extension.</p>
+<h3 id="chat-footer">Chat footer<a class="headerlink" href="#chat-footer" title="Permanent link">&para;</a></h3>
+<p>Fixes the vertical alignment of the bottom row, where the sender select and the
+Send button sat at different heights. Adds an emoji picker.</p>
+<p>The emoji are standard Unicode, in the eight official groups. Everyone can read
+them.</p>
 </div>
 </div>
-<h2 id="les-deux-moteurs-de-roll20">Les deux moteurs de Roll20<a class="headerlink" href="#les-deux-moteurs-de-roll20" title="Permanent link">&para;</a></h2>
-<p>Roll20 sert <strong>deux moteurs de rendu</strong> derrière le même écran : le moderne, dit
-« Jumpgate », et l'ancien, que vos campagnes plus anciennes emploient encore.</p>
-<p>Les quatre outils fonctionnent sur les deux, et sur les quatre situations que ça
-fait — meneur ou joueur, moteur moderne ou ancien. Ce n'est pas une supposition :
-chacune a été éprouvée sur une vraie partie.</p>
-<h2 id="ce-que-ca-coute">Ce que ça coûte<a class="headerlink" href="#ce-que-ca-coute" title="Permanent link">&para;</a></h2>
+<h2 id="roll20s-two-renderers">Roll20's two renderers<a class="headerlink" href="#roll20s-two-renderers" title="Permanent link">&para;</a></h2>
+<p>Roll20 runs two rendering engines behind the same interface: the current one
+(Jumpgate) and the legacy one, still used by older campaigns.</p>
+<p>All four tools work on both, as GM and as player. Each combination was tested on
+a live game.</p>
+<h2 id="cost">Cost<a class="headerlink" href="#cost" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -538,22 +529,21 @@ chacune a été éprouvée sur une vraie partie.</p>
 </thead>
 <tbody>
 <tr>
-<td>Une trame, tous outils allumés</td>
-<td><strong>0,2 ms</strong></td>
+<td>Per frame, all tools on</td>
+<td>0.2 ms</td>
 </tr>
 <tr>
-<td>Ce que ça prend d'un cœur</td>
-<td><strong>3,5 %</strong></td>
+<td>CPU</td>
+<td>3.5% of one core</td>
 </tr>
 <tr>
-<td>Images par seconde</td>
-<td>181 → 176</td>
+<td>Frame rate</td>
+<td>181 → 176 fps</td>
 </tr>
 </tbody>
 </table>
-<p>Mesuré sur une vraie partie, pas estimé. Le calque de dessin ne tourne que
-lorsqu'un outil a quelque chose à peindre ; sans cela, il n'existe même pas dans
-la page.</p>
+<p>Measured on a live game. The drawing layer only runs when a tool has something
+to draw; otherwise it is not in the page at all.</p>
 
 
 
@@ -577,7 +567,7 @@ la page.</p>
           <button type="button" class="md-top md-icon" data-md-component="top" hidden>
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Retour en haut de la page
+  Back to top
 </button>
         
       </main>
@@ -589,7 +579,7 @@ la page.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      Tous droits réservés — le code est lisible, il n'est pas libre de droits.
+      All rights reserved. The code is readable; it is not open source.
     </div>
   
   
@@ -607,7 +597,7 @@ la page.</p>
     
     
     
-    <a href="https://github.com/igneefleur/vttinker" target="_blank" rel="noopener" title="Le code" class="md-social__link">
+    <a href="https://github.com/igneefleur/vttinker" target="_blank" rel="noopener" title="Source" class="md-social__link">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
     </a>
   
@@ -626,7 +616,7 @@ la page.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.top", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copi\u00e9 dans le presse-papier", "clipboard.copy": "Copier dans le presse-papier", "search.result.more.one": "1 de plus sur cette page", "search.result.more.other": "# de plus sur cette page", "search.result.none": "Aucun document trouv\u00e9", "search.result.one": "1 document trouv\u00e9", "search.result.other": "# documents trouv\u00e9s", "search.result.placeholder": "Taper pour d\u00e9marrer la recherche", "search.result.term.missing": "Non trouv\u00e9", "select.version": "S\u00e9lectionner la version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.top", "content.code.copy", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
