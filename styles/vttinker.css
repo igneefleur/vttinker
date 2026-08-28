@@ -1,0 +1,234 @@
+/* LE SITE PORTE LES COULEURS DE L'EXTENSION, ET ELLES NE SONT PAS INVENTÉES.
+ *
+ * Chaque valeur ci-dessous est RELEVÉE sur Roll20 — c'est le même jeu de jetons
+ * que extension/ui/roll20.css, mesuré sur la vraie page puis recopié ici. Le
+ * rose n'est pas « une couleur de marque » choisie pour faire joli : c'est
+ * l'accent de Roll20, celui des boutons de sa propre interface.
+ *
+ * Un site qui présente une extension doit ressembler à ce dans quoi elle
+ * s'installe. Quelqu'un qui arrive ici depuis une partie doit reconnaître la
+ * même main.
+ */
+
+:root {
+  /* Les jetons de Roll20, en clair. */
+  --vttk-accent:      rgb(225, 0, 133);
+  --vttk-accent-doux: rgba(225, 0, 133, .09);
+  --vttk-texte:       rgb(98, 91, 101);
+  --vttk-texte-fort:  rgb(41, 33, 46);
+  --vttk-texte-doux:  rgb(140, 134, 143);
+  --vttk-fond:        #fff;
+  --vttk-fond-doux:   #f5f5f5;
+  --vttk-trait:       rgba(41, 33, 46, .12);
+  --vttk-rayon:       10px;
+  --vttk-rayon-petit: 4px;
+  --vttk-ombre:       0 6px 10px rgba(0, 0, 0, .14), 0 1px 18px rgba(0, 0, 0, .12);
+
+  /* Ce que Material lit. */
+  --md-primary-fg-color:        var(--vttk-texte-fort);
+  --md-primary-fg-color--light: var(--vttk-texte);
+  --md-primary-fg-color--dark:  var(--vttk-texte-fort);
+  --md-accent-fg-color:         var(--vttk-accent);
+  --md-typeset-a-color:         var(--vttk-accent);
+  --md-default-bg-color:        var(--vttk-fond);
+  --md-typeset-color:           var(--vttk-texte);
+}
+
+/* LE SOMBRE EST CELUI DE ROLL20, relevé sur sa propre interface — pas un
+ * assombrissement calculé. Roll20 ne se contente pas d'inverser, et une
+ * extension qui s'y pose ne doit pas le faire non plus. */
+[data-md-color-scheme="slate"] {
+  --vttk-texte:      rgb(185, 180, 189);
+  --vttk-texte-fort: rgb(230, 230, 230);
+  --vttk-texte-doux: rgb(139, 134, 143);
+  --vttk-fond:       rgb(23, 23, 23);
+  --vttk-fond-doux:  rgb(32, 32, 32);
+  --vttk-trait:      rgba(255, 255, 255, .13);
+  --vttk-accent-doux: rgba(225, 0, 133, .16);
+
+  --md-default-bg-color:  var(--vttk-fond);
+  --md-typeset-color:     var(--vttk-texte);
+  --md-primary-fg-color:  var(--vttk-fond-doux);
+  --md-footer-bg-color:   rgb(18, 18, 18);
+}
+
+body, .md-typeset {
+  font-family: "Proxima Nova", proxima-nova, "Nunito Sans",
+               "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.md-typeset h1, .md-typeset h2, .md-typeset h3 {
+  font-family: "Proxima Nova Condensed", "Proxima Nova", proxima-nova,
+               "Nunito Sans", Helvetica, Arial, sans-serif;
+  color: var(--vttk-texte-fort);
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.md-typeset h1 { font-size: 2.1rem; margin-bottom: .4em; }
+.md-typeset h2 { border-top: 1px solid var(--vttk-trait); padding-top: 1.4em; }
+
+/* ---------- L'EN-TÊTE ---------- */
+.md-header, .md-tabs { box-shadow: none; border-bottom: 1px solid var(--vttk-trait); }
+.md-header__title { font-weight: 700; letter-spacing: -.01em; }
+
+/* ---------- LA BANNIÈRE ----------
+ *
+ * Un titre, une phrase, et les deux boutons. Rien d'autre : la seule chose que
+ * quelqu'un vient chercher ici est le paquet à installer. */
+.vttk-banniere {
+  padding: 2.2rem 0 1.6rem;
+  border-bottom: 1px solid var(--vttk-trait);
+  margin-bottom: 1.8rem;
+}
+.vttk-banniere h1 {
+  margin: 0 0 .5rem !important;
+  font-size: 2.6rem !important;
+  line-height: 1.05;
+}
+.vttk-banniere p {
+  color: var(--vttk-texte-doux);
+  font-size: .92rem;
+  max-width: 46rem;
+  margin: 0;
+}
+.vttk-version {
+  display: inline-block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .62rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--vttk-accent);
+  background: var(--vttk-accent-doux);
+  border-radius: var(--vttk-rayon-petit);
+  padding: .18em .6em;
+  margin-bottom: .9rem;
+}
+
+/* ---------- LES DEUX CARTES DE TÉLÉCHARGEMENT ---------- */
+.vttk-paquets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem;
+  margin: 1.6rem 0 2rem;
+}
+.vttk-paquet {
+  background: var(--vttk-fond);
+  border: 1px solid var(--vttk-trait);
+  border-radius: var(--vttk-rayon);
+  padding: 1.2rem 1.3rem 1.3rem;
+  box-shadow: var(--vttk-ombre);
+  display: flex;
+  flex-direction: column;
+}
+.vttk-paquet h3 {
+  margin: 0 0 .2rem !important;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+}
+.vttk-paquet .etat {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: .58rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--vttk-texte-doux);
+  border: 1px solid var(--vttk-trait);
+  border-radius: var(--vttk-rayon-petit);
+  padding: .1em .45em;
+  white-space: nowrap;
+}
+.vttk-paquet .etat.signe { color: var(--vttk-accent); border-color: var(--vttk-accent); }
+.vttk-paquet p {
+  color: var(--vttk-texte-doux);
+  font-size: .78rem;
+  line-height: 1.5;
+  margin: .35rem 0 1rem;
+  flex: 1;
+}
+
+/* LE BOUTON EST CELUI DE ROLL20 : rose plein, coins à 4 px, et rien de plus. */
+.vttk-bouton {
+  display: inline-block;
+  background: var(--vttk-accent);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: .82rem;
+  text-align: center;
+  text-decoration: none !important;
+  padding: .62em 1.1em;
+  border-radius: var(--vttk-rayon-petit);
+  transition: filter .12s ease;
+}
+.vttk-bouton:hover, .vttk-bouton:focus-visible { filter: brightness(1.08); }
+.vttk-bouton:focus-visible { outline: 2px solid var(--vttk-texte-fort); outline-offset: 2px; }
+.vttk-bouton.creux {
+  background: transparent;
+  color: var(--vttk-accent) !important;
+  border: 1px solid var(--vttk-accent);
+}
+.vttk-bouton[aria-disabled="true"] {
+  background: var(--vttk-fond-doux);
+  color: var(--vttk-texte-doux) !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------- LES ÉTAPES D'INSTALLATION ----------
+ *
+ * Numérotées parce qu'elles le sont vraiment : c'est une séquence, et l'ordre
+ * compte. Un pas sauté ne donne pas un résultat approché, il ne donne rien. */
+.vttk-etapes { counter-reset: e; list-style: none; padding: 0; margin: 1rem 0 0; }
+
+/* LE NUMÉRO EST POSÉ, PAS MIS EN COLONNE — et c'est une correction.
+ *
+ * Le premier jet faisait de chaque `li` une grille à deux colonnes. Or le
+ * contenu d'une étape est de l'EN-LIGNE : un `strong`, du texte, un `code`,
+ * encore du texte. Une grille en fait autant d'éléments distincts, et chacun
+ * prend une cellule : le numéro occupait la première, le premier mot la
+ * seconde, et tout le reste descendait dans une colonne de deux rem de large —
+ * un caractère par ligne. Photographié, vu, corrigé.
+ *
+ * Un décalage et un numéro en position absolue ne se soucient pas de ce que le
+ * contenu contient. */
+.vttk-etapes > li {
+  position: relative;
+  padding: .7rem 0 .7rem 2.9rem;
+  border-bottom: 1px solid var(--vttk-trait);
+  margin: 0;
+}
+.vttk-etapes > li::before {
+  counter-increment: e;
+  content: counter(e);
+  position: absolute;
+  left: 0;
+  top: .7rem;
+  width: 2rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  color: var(--vttk-accent);
+  font-variant-numeric: tabular-nums;
+}
+.vttk-etapes strong { color: var(--vttk-texte-fort); }
+.vttk-etapes code {
+  background: var(--vttk-accent-doux);
+  color: var(--vttk-texte-fort);
+}
+
+/* ---------- LA LISTE DES MODULES ---------- */
+.vttk-modules { display: grid; gap: .8rem; margin: 1.4rem 0; }
+.vttk-module {
+  border-left: 3px solid var(--vttk-accent);
+  padding: .1rem 0 .1rem 1rem;
+}
+.vttk-module h3 { margin: 0 0 .25rem !important; font-size: 1rem; }
+.vttk-module p { margin: 0; color: var(--vttk-texte-doux); font-size: .82rem; }
+
+/* ---------- DÉTAILS ---------- */
+.md-typeset table:not([class]) th { background: var(--vttk-fond-doux); color: var(--vttk-texte-fort); }
+.md-typeset table:not([class]) { border: 1px solid var(--vttk-trait); border-radius: var(--vttk-rayon-petit); }
+.md-footer { border-top: 1px solid var(--vttk-trait); }
+.md-typeset .admonition { border-radius: var(--vttk-rayon-petit); box-shadow: none; border: 1px solid var(--vttk-trait); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vttk-bouton { transition: none; }
+}
