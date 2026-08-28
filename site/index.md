@@ -32,12 +32,10 @@ Chrome n'installe que ce qui vient de son magasin, ou ce qu'on lui donne à la
 main. Le paquet est le même code ; il se charge en trois gestes, et il faut le
 recharger si vous videz votre profil.
 
-[Télécharger le .zip](vttinker-chrome.zip){ .vttk-bouton creux download }
+[Télécharger le .zip](vttinker-chrome.zip){ .vttk-bouton .creux download }
 </div>
 
 </div>
-
----
 
 ## Installer sur Firefox
 

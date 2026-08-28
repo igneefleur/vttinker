@@ -178,17 +178,31 @@ body, .md-typeset {
  * Numérotées parce qu'elles le sont vraiment : c'est une séquence, et l'ordre
  * compte. Un pas sauté ne donne pas un résultat approché, il ne donne rien. */
 .vttk-etapes { counter-reset: e; list-style: none; padding: 0; margin: 1rem 0 0; }
+
+/* LE NUMÉRO EST POSÉ, PAS MIS EN COLONNE — et c'est une correction.
+ *
+ * Le premier jet faisait de chaque `li` une grille à deux colonnes. Or le
+ * contenu d'une étape est de l'EN-LIGNE : un `strong`, du texte, un `code`,
+ * encore du texte. Une grille en fait autant d'éléments distincts, et chacun
+ * prend une cellule : le numéro occupait la première, le premier mot la
+ * seconde, et tout le reste descendait dans une colonne de deux rem de large —
+ * un caractère par ligne. Photographié, vu, corrigé.
+ *
+ * Un décalage et un numéro en position absolue ne se soucient pas de ce que le
+ * contenu contient. */
 .vttk-etapes > li {
-  display: grid;
-  grid-template-columns: 2rem 1fr;
-  gap: 0 .9rem;
-  padding: .7rem 0;
+  position: relative;
+  padding: .7rem 0 .7rem 2.9rem;
   border-bottom: 1px solid var(--vttk-trait);
   margin: 0;
 }
 .vttk-etapes > li::before {
   counter-increment: e;
   content: counter(e);
+  position: absolute;
+  left: 0;
+  top: .7rem;
+  width: 2rem;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-weight: 700;
   color: var(--vttk-accent);
