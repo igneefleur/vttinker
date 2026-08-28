@@ -225,10 +225,22 @@
   background: var(--vttk-piste);
   border-radius: 3px;
 }
+/* LE CURSEUR N'ÉTAIT PAS CENTRÉ SUR SA PISTE, ET « margin-left » N'Y POUVAIT RIEN.
+ *
+ * Mesuré au pixel sur des captures des deux navigateurs, même page, même valeur :
+ * sur Chromium le milieu du curseur tombait 2,50 px à gauche du milieu de la
+ * piste, son bord droit affleurant celui de la piste.
+ *
+ * Le « margin-left: -3px » qui était là n'y était pour rien — le retirer ne
+ * changeait strictement rien. Chromium ignore cette marge sur un glisseur en
+ * mode d'écriture vertical, où gauche et droite sont l'axe de bloc. Une
+ * translation, elle, s'applique : l'écart tombe à 0,00 px.
+ *
+ * La règle ne concerne que Chromium ; Firefox n'applique pas ce sélecteur. */
 .vttk-zoom-s::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 13px; height: 13px;
-  margin-left: -3px;
+  transform: translateX(2.5px);
   border-radius: 50%;
   background: #fff;
   border: 2px solid var(--vttk-rempli);

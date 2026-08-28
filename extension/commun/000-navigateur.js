@@ -6,6 +6,14 @@
  * cette extension emploie — `storage.local`, `runtime.getURL`,
  * `runtime.getManifest`, `storage.onChanged` — et un simple repli suffit.
  *
+ * MESURÉ DEPUIS : les Chromium récents exposent `browser` EUX AUSSI, dans les
+ * scripts de contenu comme dans les pages d'extension, et ce n'est pas le même
+ * objet que `chrome` — `browser === chrome` y vaut faux. Le repli ci-dessous ne
+ * s'exécute donc jamais sur ces versions-là, et l'extension tourne sur leur
+ * `browser` natif. Il reste nécessaire pour les Chromium antérieurs, et il est
+ * inoffensif quand `browser` existe déjà : une déclaration `var` n'écrase pas
+ * une propriété globale en place — vérifié, le natif survit.
+ *
  * ---------- POURQUOI CE FICHIER EXISTE, ET POURQUOI IL EST PREMIER ----------
  *
  * Le repli était recopié dans quatre fichiers et absent des six autres. Ça
