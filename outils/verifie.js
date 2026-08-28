@@ -4892,6 +4892,66 @@ function essaiHuitDefauts() {
   verifie("  et le pilote ajoute bien « -headless » quand on n'en demande pas",
     /if \(!visible\) \{ opts\.addArguments\("-headless"\); \}/.test(pilote));
 
+  /* ---------- 6 ter. AUCUN OUTIL D'ASSISTANCE N'EST NOMMÉ NULLE PART ----------
+   *
+   * Le dépôt ne doit porter aucune trace d'un outil d'assistance : ni dans un
+   * nom de fichier, ni dans un commentaire, ni dans une chaîne, ni dans un
+   * message de commit. C'est une exigence de l'auteur, et elle est absolue.
+   *
+   * Elle s'était pourtant fait prendre en défaut à l'endroit le plus retors :
+   * `.gitignore` NOMMAIT l'outil pour ignorer son dossier de réglages. Le
+   * fichier étant versionné, la mention serait partie avec — la règle destinée
+   * à effacer la trace en était devenue le porteur. La règle vit désormais dans
+   * .git/info/exclude, que git ne versionne jamais.
+   *
+   * Le contrôle balaie TOUT fichier de texte du dépôt, sans exception : c'est le
+   * seul balayage qui aurait vu celui-là. */
+  /* LA LISTE EST ÉPELÉE EN MORCEAUX, ET CE N'EST PAS UNE COQUETTERIE.
+   *
+   * Écrite d'un trait, elle contiendrait les mots qu'elle traque — et le
+   * balayage se dénoncerait lui-même au premier passage. Vérifié : il l'a fait.
+   * Un contrôle qui échoue sur son propre texte n'apprend rien de ce qu'il
+   * surveille, et pousse à le désarmer pour retrouver le vert. */
+  const MORCEAUX = ["cla" + "ude", "anthro" + "pic", "copi" + "lot", "chat" + "gpt",
+                    "open" + "ai", "gpt-[0-9]", "code" + "ium", "co-authored" + "-by"];
+  const NOMS = new RegExp(MORCEAUX.join("|"), "i");
+  const dossiers = ["extension", "outils", "site"];
+  const fautifs = [];
+  (function balaie(d) {
+    let entrees;
+    try { entrees = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return; }
+    entrees.forEach(function (e) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) {
+        if (/^\.|^node_modules$|^releves$/.test(e.name)) { return; }
+        if (NOMS.test(e.name)) { fautifs.push(p + " (nom de dossier)"); }
+        balaie(p);
+        return;
+      }
+      if (NOMS.test(e.name)) { fautifs.push(p + " (nom de fichier)"); }
+      if (!/\.(js|json|css|html|md|txt|yml)$/.test(e.name)) { return; }
+      let t;
+      try { t = fs.readFileSync(p, "utf8"); } catch (e2) { return; }
+      t.split("\n").forEach(function (l, i) {
+        /* « cursor: pointer » n'est pas un outil, c'est du CSS. */
+        if (/cursor:\s*(pointer|text|grab|grabbing|default|move|not-allowed|crosshair)/.test(l)) { return; }
+        if (NOMS.test(l)) { fautifs.push(p + ":" + (i + 1)); }
+      });
+    });
+  })(path.join(RACINE, ".."));
+  ["package.json", ".gitignore", ".gitattributes", "README.md", "LICENSE.md", "mkdocs.yml"]
+    .forEach(function (f) {
+      let t;
+      try { t = fs.readFileSync(path.join(RACINE, "..", f), "utf8"); } catch (e) { return; }
+      t.split("\n").forEach(function (l, i) {
+        if (NOMS.test(l)) { fautifs.push(f + ":" + (i + 1)); }
+      });
+    });
+  verifie("aucun outil d'assistance n'est nommé dans le dépôt",
+    fautifs.length === 0, fautifs.slice(0, 6).join(" · "));
+  verifie("  et les dossiers balayés existent bien",
+    dossiers.every(function (d) { return fs.existsSync(path.join(RACINE, "..", d)); }));
+
   /* ---------- 7. UNE SEULE HORLOGE ---------- */
   const pontSrc = lis("page/pont.js");
   verifie("il n'y a qu'une déclaration de « maintenant »",

@@ -46,7 +46,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Réglages d'assistants locaux : ils ne regardent que ce poste, et leur seul
-# rôle ici est d'interdire à un outil de tuer un navigateur qui ne lui appartient
-# pas. Le dépôt n'a pas à les porter.
-/.claude/
+# Les réglages d'outils propres à ce poste ne sont pas ici : ils vivent dans
+# .git/info/exclude, que git ne versionne pas. Un fichier versionné qui NOMME un
+# outil est déjà une trace de cet outil.
