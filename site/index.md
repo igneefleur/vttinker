@@ -6,87 +6,67 @@ hide:
 <div class="vttk-banniere" markdown>
 <span class="vttk-version">version 0.50.0</span>
 
-# Des outils pour Roll20
+# VTTinker
 
-Les bornes du zoom, la grille au-delà de la carte, vos propres marqueurs de
-jeton, et un tchat qui ne se marche plus sur les pieds. Chaque outil s'allume et
-s'éteint séparément. Rien ne s'active tout seul.
+A browser extension for Roll20. It raises the zoom limits, draws the grid past
+the map edge, lets you add your own token markers, and fixes the chat footer.
+Each tool has its own on/off switch.
 </div>
 
 <div class="vttk-paquets" markdown>
 
 <div class="vttk-paquet" markdown>
-### Firefox <span class="etat signe">signé par Mozilla</span>
+### Firefox <span class="etat signe">signed</span>
 
-S'installe d'un clic et reste installé. Firefox vérifie la signature à
-l'ouverture du fichier ; il n'y a rien à régler et rien à réactiver à chaque
-démarrage.
+Signed by Mozilla. Install it once and Firefox keeps it.
 
-[Télécharger le .xpi](vttinker-firefox.xpi){ .vttk-bouton download }
+[Download .xpi](vttinker-firefox.xpi){ .vttk-bouton download }
 </div>
 
 <div class="vttk-paquet" markdown>
-### Chrome <span class="etat">mode développeur</span>
+### Chrome <span class="etat">developer mode</span>
 
-Chrome n'installe que ce qui vient de son magasin, ou ce qu'on lui donne à la
-main. Le paquet est le même code ; il se charge en trois gestes, et il faut le
-recharger si vous videz votre profil.
+Not on the Chrome Web Store, so it loads as an unpacked extension.
 
-[Télécharger le .zip](vttinker-chrome.zip){ .vttk-bouton .creux download }
+[Download .zip](vttinker-chrome.zip){ .vttk-bouton .creux download }
 </div>
 
 </div>
 
-## Installer sur Firefox
+## Install on Firefox
 
 <ol class="vttk-etapes" markdown>
-<li markdown>**Téléchargez le fichier `.xpi`** avec le bouton ci-dessus. Firefox
-propose parfois de l'ouvrir directement : c'est ce qu'on veut.</li>
-<li markdown>**Si rien ne se passe**, ouvrez `about:addons`, cliquez la roue
-dentée en haut à droite, puis **Installer un module depuis un fichier**, et
-choisissez le `.xpi` téléchargé.</li>
-<li markdown>**Acceptez la permission demandée.** Il n'y en a qu'une —
-*stockage* — et elle sert à retenir vos réglages sur votre machine.</li>
-<li markdown>**Ouvrez une partie Roll20.** Une section **VTTK** apparaît en bas
-de la colonne d'outils, à gauche.</li>
+<li markdown>Download the `.xpi` file.</li>
+<li markdown>Open it. If nothing happens, go to `about:addons`, click the gear
+icon, choose **Install Add-on From File**, and pick the downloaded file.</li>
+<li markdown>Accept the permission request. There is one: *storage*.</li>
+<li markdown>Open a Roll20 game. A **VTTK** section appears at the bottom of the
+left toolbar.</li>
 </ol>
 
-!!! note "Pourquoi une signature"
-    Depuis Firefox 48, une extension non signée ne s'installe pas. Le paquet est
-    donc envoyé à Mozilla, qui le vérifie et le signe. Il n'est pas publié sur
-    leur magasin : la signature dit seulement qu'il vient bien d'ici et qu'il
-    n'a pas été modifié en route.
-
-## Installer sur Chrome
+## Install on Chrome
 
 <ol class="vttk-etapes" markdown>
-<li markdown>**Téléchargez le `.zip`** et **décompressez-le** dans un dossier que
-vous garderez — Chrome lit le dossier à chaque démarrage, il ne le recopie
-pas.</li>
-<li markdown>**Ouvrez `chrome://extensions`** et activez **Mode développeur**, en
-haut à droite.</li>
-<li markdown>**Cliquez « Charger l'extension non empaquetée »** et désignez le
-dossier décompressé — celui qui contient `manifest.json`.</li>
-<li markdown>**Ouvrez une partie Roll20.** La section **VTTK** apparaît dans la
-colonne d'outils.</li>
+<li markdown>Download the `.zip` and extract it to a folder you intend to keep.
+Chrome reads that folder on every startup.</li>
+<li markdown>Go to `chrome://extensions` and turn on **Developer mode**.</li>
+<li markdown>Click **Load unpacked** and select the extracted folder, the one
+containing `manifest.json`.</li>
+<li markdown>Open a Roll20 game. The **VTTK** section appears in the toolbar.</li>
 </ol>
 
-!!! warning "Ce que le mode développeur implique"
-    Chrome affiche un bandeau d'avertissement à chaque démarrage, et peut
-    désactiver l'extension si vous réinitialisez votre profil. C'est le prix à
-    payer pour installer une extension qui ne vient pas du Chrome Web Store —
-    ce n'est pas un défaut du paquet.
+!!! warning "Developer mode"
+    Chrome shows a warning banner at startup and may disable unpacked extensions
+    when you reset your profile. Reload the folder if that happens.
 
-## Ce qu'elle touche, et ce qu'elle ne touche pas
+## Access
 
 | | |
 | --- | --- |
-| **Permission demandée** | `stockage`, et rien d'autre |
-| **Sites concernés** | `app.roll20.net/editor` seulement |
-| **Ce qui sort de votre machine** | rien — aucun appel réseau, sauf les images de marqueurs que **vous** ajoutez |
-| **Ce qu'elle écrit chez Roll20** | les marqueurs de jeton que vous posez, et rien d'autre |
-| **Ce qu'elle range chez vous** | vos réglages et votre palette, dans le stockage local du navigateur |
+| Permissions | `storage` |
+| Sites | `app.roll20.net/editor` |
+| Network | none, except images you add as markers |
+| Written to Roll20 | token status markers you place |
+| Stored locally | your settings and marker palette |
 
-Le code est lisible dans son intégralité sur
-[GitHub](https://github.com/igneefleur/vttinker) — commentaires compris, et ils
-racontent ce qui a été mesuré.
+Source: [github.com/igneefleur/vttinker](https://github.com/igneefleur/vttinker)

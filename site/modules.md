@@ -1,80 +1,69 @@
-# Ce que ça fait
+# Features
 
-Quatre outils, quatre interrupteurs. Ils se règlent depuis la section **VTTK** de
-la colonne d'outils, une fois la partie ouverte.
-
-Aucun ne s'allume tout seul, et aucun ne laisse de trace derrière lui quand on
-l'éteint — c'est une contrainte que le code se donne, et qu'un banc d'essai
-vérifie à chaque modification.
+Four tools, each with its own switch in the **VTTK** section of the toolbar.
 
 <div class="vttk-modules" markdown>
 
 <div class="vttk-module" markdown>
-### Bornes du zoom
+### Zoom range
 
-Roll20 s'arrête à 10 % et à 250 %. Vous choisissez vos propres bornes, et le
-zoom les respecte — à la molette, aux boutons, au glisseur.
+Roll20 stops at 10% and 250%. Set your own minimum and maximum. The mouse wheel,
+the buttons and the slider all respect them.
 
-Dans sa plage à lui, Roll20 fait tout son travail sans qu'on y touche. On ne
-prend la main **qu'au-delà**, et le premier cran hors bornes vaut exactement le
-dernier cran en deçà : la jonction ne se sent pas.
+Inside Roll20's own range nothing is intercepted. Past it, the step size matches
+Roll20's last step, so the transition is not noticeable.
 </div>
 
 <div class="vttk-module" markdown>
-### Grille hors carte
+### Grid beyond the page
 
-La grille de Roll20 s'arrête au bord de la page. Celle-ci la prolonge d'autant
-de cases que vous voulez, dans le même alignement.
+Roll20 stops drawing the grid at the page edge. This continues it for a chosen
+number of cells, aligned with the existing grid.
 
-Les cinq types de grille sont pris en charge — carrés, hexagones par colonnes ou
-par rangées, isométrique, dimétrique — parce que c'est le dessin de Roll20
-lui-même qui est employé, pas une imitation.
+All five grid types work: square, hex by column, hex by row, isometric,
+dimetric. Roll20's own drawing code is reused rather than reimplemented.
 </div>
 
 <div class="vttk-module" markdown>
-### Marqueurs personnalisés
+### Custom markers
 
-Roll20 propose quarante-sept marqueurs de jeton. Ajoutez les vôtres, avec
-l'adresse de n'importe quelle image.
+Roll20 ships 47 token status markers. Add your own with any image URL.
 
-**Tout le monde les voit**, extension ou pas : le marqueur est écrit dans la
-partie comme n'importe quel autre, et l'adresse de l'image voyage avec lui. Vos
-camarades n'ont rien à installer.
+Other players see them without installing anything. The marker is written to the
+game as a normal status marker, with the image address in the tag, so Roll20
+draws it for everyone.
 
-Ils se posent sur autant de jetons qu'on veut d'un seul geste, portent un
-compteur, et se rangent dans une palette qu'on trie à la souris.
+Markers can be applied to several tokens at once, carry a counter, and are
+reorderable by drag.
 </div>
 
 <div class="vttk-module" markdown>
-### Pied de chat
+### Chat footer
 
-La ligne du bas du tchat était mal alignée — « A » et « Envoyer » ne tombaient
-pas à la même hauteur. C'est corrigé, et un choix d'émoji s'y ajoute.
+Fixes the vertical alignment of the bottom row, where the sender select and the
+Send button sat at different heights. Adds an emoji picker.
 
-Les émojis sont ceux d'Unicode, rangés dans leurs huit vraies catégories
-officielles. Rien de personnalisé : **tout le monde les lit**, même sans
-l'extension.
+The emoji are standard Unicode, in the eight official groups. Everyone can read
+them.
 </div>
 
 </div>
 
-## Les deux moteurs de Roll20
+## Roll20's two renderers
 
-Roll20 sert **deux moteurs de rendu** derrière le même écran : le moderne, dit
-« Jumpgate », et l'ancien, que vos campagnes plus anciennes emploient encore.
+Roll20 runs two rendering engines behind the same interface: the current one
+(Jumpgate) and the legacy one, still used by older campaigns.
 
-Les quatre outils fonctionnent sur les deux, et sur les quatre situations que ça
-fait — meneur ou joueur, moteur moderne ou ancien. Ce n'est pas une supposition :
-chacune a été éprouvée sur une vraie partie.
+All four tools work on both, as GM and as player. Each combination was tested on
+a live game.
 
-## Ce que ça coûte
+## Cost
 
 | | |
 | --- | --- |
-| Une trame, tous outils allumés | **0,2 ms** |
-| Ce que ça prend d'un cœur | **3,5 %** |
-| Images par seconde | 181 → 176 |
+| Per frame, all tools on | 0.2 ms |
+| CPU | 3.5% of one core |
+| Frame rate | 181 → 176 fps |
 
-Mesuré sur une vraie partie, pas estimé. Le calque de dessin ne tourne que
-lorsqu'un outil a quelque chose à peindre ; sans cela, il n'existe même pas dans
-la page.
+Measured on a live game. The drawing layer only runs when a tool has something
+to draw; otherwise it is not in the page at all.

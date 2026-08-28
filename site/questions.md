@@ -1,74 +1,60 @@
-# Questions
+# FAQ
 
-## Mes camarades doivent-ils l'installer aussi ?
+## Do the other players need it too?
 
-**Non**, et c'est délibéré.
+No.
 
-Un marqueur que vous posez est écrit dans la partie **comme n'importe quel
-marqueur de Roll20** — c'est Roll20 qui le dessine, pas l'extension. L'étiquette
-porte l'adresse de l'image, donc elle se suffit à elle-même. Tout le monde la
-voit, extension ou pas.
+A marker you place is written to the game as a regular Roll20 status marker.
+Roll20 draws it, not the extension, and the image address travels in the tag.
+Everyone sees it.
 
-Même chose pour les émojis : ce sont ceux d'Unicode, pas des images à nous.
+Same for emoji: they are standard Unicode characters.
 
-Ce qui reste chez vous seul : les bornes du zoom, la grille hors carte, et la
-mise en page du tchat. Ce sont des retouches de **votre** vue.
+The zoom range, the extended grid and the chat layout only affect your own view.
 
-## Pourquoi Chrome demande le mode développeur ?
+## Why does Chrome need developer mode?
 
-Parce que l'extension n'est pas publiée sur le Chrome Web Store. Chrome
-n'installe d'un clic que ce qui vient de là ; tout le reste passe par
-« Charger l'extension non empaquetée », qui exige le mode développeur.
+The extension is not published on the Chrome Web Store. Chrome only installs
+store items in one click; anything else goes through **Load unpacked**, which
+requires developer mode.
 
-Firefox, lui, accepte une extension **signée** sans passer par son magasin —
-c'est pourquoi il y a un `.xpi` d'un côté et un `.zip` de l'autre.
+Firefox accepts a signed extension without going through its store, which is why
+there is an `.xpi` on one side and a `.zip` on the other.
 
-## Qu'est-ce qui sort de ma machine ?
+## What leaves my machine?
 
-Rien. Il n'y a **aucun appel réseau** dans le code — ni `fetch`, ni
-`XMLHttpRequest`, ni `sendBeacon`. C'est vérifiable en trois secondes sur le
-dépôt, et un contrôle du banc s'en assure à chaque modification.
+Nothing. There is no `fetch`, no `XMLHttpRequest`, no `sendBeacon` anywhere in
+the code. A test in the build checks this on every change.
 
-La seule exception est celle que vous créez vous-même : si vous ajoutez un
-marqueur pointant vers une image, votre navigateur va chercher cette image, chez
-l'hôte que vous avez indiqué. C'est ce que fait n'importe quelle image d'une
-page web.
+The exception is the one you create: if you add a marker pointing at an image,
+your browser fetches that image from the host you gave.
 
-!!! note "Une conséquence à connaître"
-    Si **quelqu'un d'autre** à votre table pose un marqueur personnalisé, votre
-    navigateur ira chercher **son** image, chez **son** hôte. Cet hôte verra donc
-    passer votre adresse IP — exactement comme pour n'importe quelle image
-    partagée dans une partie. L'extension ne transmet aucun référent.
+!!! note "Worth knowing"
+    If another player at your table places a custom marker, your browser fetches
+    *their* image from *their* host, and that host sees your IP address. This is
+    true of any image shared in a game. The extension sends no referrer.
 
-## Est-ce que ça ralentit Roll20 ?
+## Does it slow Roll20 down?
 
-Mesuré, tous outils allumés : **0,2 ms par trame**, soit 3,5 % d'un cœur, et les
-images par seconde passent de 181 à 176.
+With all four tools on: 0.2 ms per frame, 3.5% of one core, 181 → 176 fps.
 
-Le calque de dessin ne tourne que s'il y a quelque chose à peindre. Quand tous
-les outils sont éteints, il n'existe pas dans la page.
+The drawing layer only runs when there is something to draw.
 
-## Ça marche sur les vieilles campagnes ?
+## Does it work on older campaigns?
 
-Oui. Roll20 sert deux moteurs de rendu, et les quatre outils fonctionnent sur les
-deux — meneur ou joueur. Chaque combinaison a été éprouvée sur une vraie partie.
+Yes. Roll20 runs two rendering engines; all four tools work on both, as GM and
+as player.
 
-## Comment je la désinstalle ?
+## How do I uninstall it?
 
-Par le gestionnaire de modules de votre navigateur, comme n'importe quelle
-extension. Vos réglages partent avec elle.
+Through your browser's add-on manager. Your settings go with it.
 
-Les marqueurs que vous avez posés sur des jetons, eux, **restent dans la
-partie** : ils appartiennent à Roll20, pas à l'extension. Pour les enlever, il
-faut les retirer des jetons.
+Markers you placed on tokens stay in the game — they belong to Roll20, not to
+the extension. Remove them from the tokens to clear them.
 
-## Je peux lire le code ?
+## Can I read the code?
 
-Oui, en entier —
-[github.com/igneefleur/vttinker](https://github.com/igneefleur/vttinker).
+Yes: [github.com/igneefleur/vttinker](https://github.com/igneefleur/vttinker).
 
-Il est en français, commentaires compris, et les commentaires ne redisent pas ce
-que le code fait : ils racontent ce qui a été **mesuré**, ce qui a échoué, et
-pourquoi telle solution a été écartée.
-
-Le code est lisible ; il n'est pas libre de droits.
+It is written in French, comments included. The code is readable; it is not
+open source.
