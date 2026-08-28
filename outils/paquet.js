@@ -41,13 +41,51 @@ function manifeste() {
 }
 
 /* Une copie récursive, sans dépendance : quatre lignes valent mieux qu'un
- * paquet de plus dans une chaîne d'approvisionnement qu'il faudra surveiller. */
+ * paquet de plus dans une chaîne d'approvisionnement qu'il faudra surveiller.
+ *
+ * ELLE ÉCARTE CE QUI COMMENCE PAR UN POINT, et ce n'est pas une préférence de
+ * rangement. web-ext le fait pour Firefox ; ma copie ne le faisait pas, et le
+ * paquet Chrome est parti avec « .amo-upload-uuid » — l'identifiant d'envoi que
+ * Mozilla dépose après une signature. Vu en lisant le répertoire central de
+ * l'archive, pas en relisant ce code.
+ *
+ * Le fichier n'était pas secret. Ce qui l'était, c'est ce que le défaut
+ * annonçait : un « .git » égaré, un fichier d'échange d'éditeur, une clé posée
+ * là un instant — tout serait parti de la même façon, chez tout le monde. */
 function copie(de, vers) {
   fs.mkdirSync(vers, { recursive: true });
   fs.readdirSync(de, { withFileTypes: true }).forEach(function (e) {
+    if (e.name.charAt(0) === ".") { return; }
     const a = path.join(de, e.name), b = path.join(vers, e.name);
     if (e.isDirectory()) { copie(a, b); } else { fs.copyFileSync(a, b); }
   });
+}
+
+/* CE QUE L'ARCHIVE CONTIENT VRAIMENT — lu dans son répertoire central, et non
+ * déduit de ce qu'on croit y avoir mis. C'est le seul contrôle qui aurait vu le
+ * défaut ci-dessus, et il tourne désormais à chaque fabrication. */
+function entrees(f) {
+  const b = fs.readFileSync(f);
+  const out = [];
+  for (let i = 0; i < b.length - 46; i++) {
+    if (b[i] !== 0x50 || b[i + 1] !== 0x4b || b[i + 2] !== 0x01 || b[i + 3] !== 0x02) { continue; }
+    const n = b.readUInt16LE(i + 28);
+    out.push(b.toString("utf8", i + 46, i + 46 + n));
+  }
+  return out;
+}
+
+function controle(f) {
+  const l = entrees(f);
+  const sales = l.filter(function (x) {
+    return /(^|\/)\.[^/]/.test(x) || /node_modules|\.map$/.test(x);
+  });
+  if (sales.length) {
+    console.log("\n  CE PAQUET CONTIENT CE QU'IL NE DEVRAIT PAS :");
+    sales.forEach(function (x) { console.log("    " + x); });
+    throw new Error("paquet impur : " + path.basename(f));
+  }
+  return l.length;
 }
 
 /* PowerShell sait faire une archive, et il est là. On évite ainsi une
@@ -86,7 +124,7 @@ function main() {
      "--overwrite-dest", "--filename", "vttinker-" + v + "-firefox.zip"],
     { cwd: RACINE, encoding: "utf8", stdio: "pipe" });
   const ff = path.join(DIST, "vttinker-" + v + "-firefox.zip");
-  console.log("  " + path.relative(RACINE, ff) + "   " + taille(ff));
+  console.log("  " + path.relative(RACINE, ff) + "   " + taille(ff) + "   " + controle(ff) + " entrées");
   const avert = (sortie.match(/WARNING/g) || []).length;
   if (avert) { console.log("  " + avert + " avertissement(s) de web-ext — voir ci-dessous"); console.log(sortie.trim()); }
 
@@ -104,7 +142,7 @@ function main() {
   const ch = path.join(DIST, "vttinker-" + v + "-chrome.zip");
   archive(TRAVAIL, ch);
   fs.rmSync(TRAVAIL, { recursive: true, force: true });
-  console.log("  " + path.relative(RACINE, ch) + "   " + taille(ch));
+  console.log("  " + path.relative(RACINE, ch) + "   " + taille(ch) + "   " + controle(ch) + " entrées");
   console.log("  (browser_specific_settings retiré — c'est le seul écart)");
 
   /* ---------- CE QUE L'ON VIENT DE FABRIQUER ---------- */
