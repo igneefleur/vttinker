@@ -1,0 +1,52 @@
+# Le site construit : un resultat ne vit pas dans une branche de source.
+/.site/
+/.gh-pages/
+# Et les paquets deposes pour la page de telechargement.
+/site/vttinker-*.xpi
+/site/vttinker-*.zip
+
+# Paquets construits — jamais dans le dépôt : un binaire committé finit toujours
+# par écraser celui qu'un magasin a signé.
+*.xpi
+*.zip
+/dist/
+/web-ext-artifacts/
+
+# Outillage
+node_modules/
+# package-lock.json EST VERSIONNÉ, et c est délibéré : le README ordonne
+# « npm install », et sans verrou deux installations à deux semaines d écart ne
+# donnent pas le même outillage. Un banc qui compare des textes et un pilote qui
+# conduit un navigateur ne supportent pas cette dérive-là.
+__pycache__/
+*.pyc
+
+# Le pilote — tout ce qu'il fabrique reste local.
+#   .profil* : les profils Firefox qu'il tient. L'ÉTOILE N'EST PAS UN CONFORT,
+#              c'est une correction : la règle ne couvrait que « .profil/ », et le
+#              second profil s'appelle « .profil-humain » — celui qui sert à
+#              franchir le captcha à la main, donc celui qui porte cookies.sqlite,
+#              places.sqlite, formhistory.sqlite, et surtout key4.db + logins.db,
+#              c'est-à-dire LA BASE DE MOTS DE PASSE DE FIREFOX.
+#              Relevé avant le premier commit : 1709 fichiers seraient entrés,
+#              la quasi-totalité venant de là. Un suffixe manquant, et un dépôt
+#              destiné à des pages publiques emportait tout un trousseau.
+#   .bin     : le binaire geckodriver, téléchargé à la demande.
+#   releves  : les relevés et captures d'une partie réelle — ils portent des noms
+#              de joueurs et des identifiants de campagne.
+#   config   : l'adresse de la partie.
+/outils/.profil*/
+/outils/.bin/
+/outils/releves/
+/outils/config.json
+
+# Postes de travail
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Réglages d'assistants locaux : ils ne regardent que ce poste, et leur seul
+# rôle ici est d'interdire à un outil de tuer un navigateur qui ne lui appartient
+# pas. Le dépôt n'a pas à les porter.
+/.claude/

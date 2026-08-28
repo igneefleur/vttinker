@@ -1,0 +1,1167 @@
+/* CE QUE L'EXTENSION DESSINE DANS ROLL20 — et rien d'autre.
+ *
+ * Cette feuille est injectée par le manifeste dans TOUTES les frames de
+ * app.roll20.net. Deux règles en découlent, et elles ne se négocient pas.
+ *
+ * 1. CHAQUE SÉLECTEUR COMMENCE PAR « .vttk- ». Il n'y a ici ni Shadow DOM ni
+ *    portée : le préfixe est la seule chose qui empêche de repeindre
+ *    l'interface de quelqu'un d'autre.
+ *
+ *    C'ÉTAIT « .vt- », ET ÇA NE L'EST PLUS. Deux préfixes pour une seule
+ *    extension — « vttk_ » pour les étiquettes qui partent dans la campagne,
+ *    « vt- » pour ce qui reste dans la page — n'avaient aucune raison d'être, et
+ *    on ne savait plus lequel était le bon. Un seul, partout — « vt- » n'existe
+ *    plus nulle part, ni en classe, ni en étiquette.
+ *
+ * 2. LES VARIABLES SONT POSÉES SUR NOS BOÎTES, JAMAIS SUR :root. Des noms aussi
+ *    banals que --texte ou --bord, déclarés sur la racine de toutes les frames,
+ *    entreraient dans la cascade de Roll20 et repeindraient ses propres
+ *    composants. C'est pour ça que les valeurs sont recopiées ici au lieu
+ *    d'importer ui/theme.css, qui les déclare sur :root pour le panneau — une
+ *    page à nous, où c'est légitime.
+ *
+ *
+ * ===== LA COMMANDE DE ZOOM N'EST PAS UN PANNEAU À NOUS =====
+ *
+ * Elle ENTRE dans celui de Roll20, et elle en reprend les DIMENSIONS RELEVÉES —
+ * pas des tailles choisies au jugé, qui ont déjà donné une colonne deux fois
+ * trop courte. Mesuré sur une vraie partie, sa commande native est faite ainsi
+ * (`npm run natif` la remesure quand on veut) :
+ *
+ *   .parentContainer          32 × 342   colonne, fond rgba(245,245,245,.6),
+ *                                        bord 1 px, coins 8 px, sans marge
+ *     button.el-button        30 × 34    l'oeil — 16 px/500, fond TRANSPARENT,
+ *                                        coins 10 px, remplissage 8 px
+ *     .zoomButtonsInner       30 × 272   colonne, AUCUN espacement
+ *       button «100»          30 × 34    14 px/500
+ *       button «+»            30 × 34    16 px/500
+ *       .sliderSection        40 × 170
+ *         .el-slider__runway   8 × 170   fond #edf5fa, coins 3 px
+ *         .el-slider__bar      8 × …     fond #b4006a, sous le curseur
+ *       button «−»            30 × 34    16 px/500
+ *     button.el-button        30 × 34    la mire
+ *
+ * Notre colonne remplace exactement `.zoomButtonsInner` : 30 × 272, sans
+ * espacement, et elle se glisse entre l'oeil et la mire. Les couleurs du
+ * glisseur sont les SIENNES, recopiées : on veut une commande qu'on ne
+ * distingue pas de la sienne, pas une pièce rapportée à nos couleurs. Le reste
+ * s'hérite, si bien que son thème clair ou sombre s'applique tout seul.
+ *
+ * Le décor n'existe que pour le repli de secours, quand cette boîte n'est pas
+ * là et qu'il faut bien tenir debout tout seul : .vttk-zoom-flottant.
+ */
+
+.vttk-zoom, .vttk-zoom * { box-sizing: border-box; }
+
+.vttk-zoom {
+  /* Les couleurs de SON glisseur. Ce ne sont que des VALEURS DE REPLI : le
+     module lit les vraies sur sa commande, telles qu'elles sont rendues, et les
+     repose ici en ligne. C'est ce qui rend le nôtre juste dans un thème qu'on
+     ne connaît pas — le sien, ou celui d'une extension qui repeint la page. */
+  --vttk-piste:        #edf5fa;
+  --vttk-rempli:       #b4006a;
+  --vttk-curseur-fond: #ffffff;
+  --vttk-curseur-bord: #e10085;
+  --vttk-rouge:        #d72f2f;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Aucun espacement : sa colonne n'en a pas, les 34 px de chaque bouton
+     suffisent à les séparer. */
+  gap: 0;
+  /* La largeur de ses boutons, pas un pixel de plus : on est DANS sa colonne
+     de 32 px, et tout dépassement la déformerait. */
+  width: 30px;
+  flex: none;
+  /* Aucun décor. Le panneau, c'est le sien. */
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: 12px/1.2 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* Faute de boîte de Roll20 où entrer, elle tient debout toute seule — et c'est
+   le seul cas où elle porte un décor. 10500 est mesuré : au-dessus du canevas
+   (5) et du tchat (101), sous la barre d'outils (10600) et les modales. */
+.vttk-zoom-flottant {
+  position: fixed;
+  right: 16px;
+  bottom: 88px;
+  z-index: 10500;
+  width: 40px;
+  padding: 5px;
+  background: #171717;
+  border: 1px solid #816e54;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .45);
+  color: #e6e6e6;
+}
+
+/* Les boutons reprennent la géométrie des siens : 30 × 34, fond transparent,
+   coins à 10 px. On n'invente ni taille ni couleur — c'est la même raison qui
+   fait cloner un bouton natif plutôt que d'en dessiner un. */
+.vttk-zoom-b {
+  flex: none;
+  width: 30px; height: 34px;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  color: inherit;
+  border: 0;
+  border-radius: 10px;
+  font: 500 16px/1 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  opacity: .85;
+  cursor: pointer;
+  transition: all .15s ease-in-out;
+}
+.vttk-zoom-b:hover { opacity: 1; background: rgba(0, 0, 0, .08); }
+.vttk-zoom-b:active { background: rgba(0, 0, 0, .16); }
+.vttk-zoom-b:focus-visible { outline: 2px solid var(--vttk-rempli); outline-offset: -2px; }
+
+.vttk-zoom-corps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* CE QUI VIENT DE ROLL20 NE SE STYLE PAS. Ces boutons sont des clones des
+   siens : ils portent ses classes, ses attributs de portée et sa variable en
+   ligne, donc son apparence — police d'icônes comprise, et son thème avec.
+   Y ajouter une règle à nous, c'est reprendre d'une main ce qu'on vient de
+   gagner de l'autre. On ne touche qu'au curseur de souris, qu'il n'a pas
+   forcément sur un bouton qu'il croyait décoratif. */
+.vttk-zoom-natif {
+  cursor: pointer;
+  /* Deux pixels, et c'est la SEULE chose qu'on impose à un clone. Chez lui, la
+     largeur de 30 px vient d'une règle accrochée à un ancêtre qu'on n'a pas
+     (.zoomButtonsInner) ; sans elle, el-button retombe sur sa largeur minimale
+     et le bouton mesurait 32. Deux pixels de trop dans une colonne de trente
+     dépassent, et ça se voit. */
+  width: 30px;
+  min-width: 0;
+}
+
+/* La case de valeur entre DANS son bouton : lui donne la boîte et la police,
+   nous donnons la saisie. Le remplissage passe à zéro, sinon la case se
+   retrouve à l'étroit dans les huit pixels qu'il réserve à une icône. */
+.vttk-zoom-ecrin { padding: 0; }
+.vttk-zoom-ecrin .vttk-zoom-v {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  /* PAS « font: inherit ». Le bouton est à 16 px, son span de valeur à 14 :
+     hériter du bouton donnait un chiffre trop large, et « 281 » s'affichait
+     « 28 » dans trente pixels. On reprend la taille de SON span, celle qui a
+     été mesurée, et le chiffre tient. */
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -.2px;
+}
+
+/* LE GLISSEUR — 40 × 170, comme le sien, et redessiné pour lui ressembler.
+ *
+ * writing-mode + direction: rtl le met debout avec le MAXIMUM EN HAUT, comme
+ * chez lui. appearance: none est nécessaire pour redessiner piste et curseur ;
+ * sans quoi on hérite du glisseur du système, qui n'a ni sa piste de 8 px, ni
+ * son remplissage magenta, ni son petit curseur rond.
+ *
+ * Les pseudo-éléments existent en deux dialectes qu'aucun navigateur ne partage,
+ * d'où la répétition : -moz- pour Firefox (avec ::-moz-range-progress, qui donne
+ * le remplissage), -webkit- pour Chrome (qui n'a pas d'équivalent du
+ * remplissage — sa piste y reste unie, et c'est le seul écart assumé). */
+.vttk-zoom-s {
+  writing-mode: vertical-rl;
+  direction: rtl;
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  width: 40px;
+  height: 170px;
+  margin: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  /* ROLL20 BORDE TOUS LES « input ». Sa feuille pose « border: 1px solid #ccc »
+     sur la balise, ce qui attrape le nôtre : un cadre gris courait autour du
+     glisseur, que le sien n'a pas. Mesuré, pas deviné — et c'est le genre de
+     règle d'hôte qu'on ne voit qu'en comparant les deux côte à côte. */
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+.vttk-zoom-s::-moz-range-track {
+  width: 8px;
+  background: var(--vttk-piste);
+  border-radius: 3px;
+}
+.vttk-zoom-s::-moz-range-progress {
+  width: 8px;
+  background: var(--vttk-rempli);
+  border-radius: 3px;
+}
+.vttk-zoom-s::-moz-range-thumb {
+  /* box-sizing ici aussi : la règle « .vttk-zoom * » ne touche pas les
+     pseudo-éléments, et sans elle les deux pixels de contour s'AJOUTAIENT aux
+     seize — vingt au total, contre seize chez lui. Un curseur visiblement plus
+     gros, pour une valeur pourtant recopiée. */
+  box-sizing: border-box;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--vttk-curseur-fond);
+  border: 2px solid var(--vttk-curseur-bord);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+.vttk-zoom-s::-webkit-slider-runnable-track {
+  width: 8px;
+  background: var(--vttk-piste);
+  border-radius: 3px;
+}
+.vttk-zoom-s::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--vttk-rempli);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+.vttk-zoom-s:focus-visible { outline: 2px solid var(--vttk-rempli); outline-offset: 2px; }
+
+/* La valeur, à la taille de son bouton « 100 » : 30 × 34, 14 px/500. Chez lui
+   c'est un bouton, chez nous une case — arriver à 380 % au glisseur est une
+   corvée, la taper ne l'est pas —, mais elle occupe exactement la même place.
+   Chiffres à chasse fixe, sinon la colonne tremble à chaque changement de
+   largeur. Pas d'unité : sa colonne fait trente pixels, et il n'en affiche pas
+   non plus. */
+.vttk-zoom-v {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  flex: none;
+  width: 30px; height: 34px;
+  padding: 0 1px;
+  background: none;
+  color: inherit;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  font: 500 14px/1 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  opacity: .9;
+  cursor: text;
+}
+.vttk-zoom-v:hover { border-bottom-color: var(--vttk-rempli); opacity: 1; }
+.vttk-zoom-v:focus { border-bottom-color: var(--vttk-rempli); outline: none; opacity: 1; }
+.vttk-zoom-v::-webkit-outer-spin-button,
+.vttk-zoom-v::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+
+/* ===== LES MARQUEURS : UN BOUTON DANS SA COLONNE, ET UN TIROIR =====
+ *
+ * PAS DE CADRE EN PLUS. Le premier jet posait une barre flottante en bas à
+ * gauche : elle marchait, mais c'était une pièce rapportée de plus dans une
+ * interface qui en a déjà beaucoup. On entre donc dans SA colonne d'outils, en
+ * clonant un de ses boutons — même parti pris que la commande de zoom.
+ *
+ * Sa colonne, relevée : #master-toolbar > .upper-buttons > .toolbar-button-outer
+ * > button.toolbar-button-inner (42 × 34) > .icon-slot > span.grimoire__roll20-icon.
+ * Le bouton cloné garde toutes ses classes, donc son thème et ses états ; on ne
+ * lui impose que l'image qui remplace le glyphe.
+ *
+ * Fusionner plus profondément est impossible, et c'est mesuré : injecter nos
+ * marqueurs dans son catalogue de marqueurs ne les fait pas dessiner, même avant
+ * que la scène soit montée — ses pictogrammes viennent d'un atlas déjà cuit. */
+.vttk-barre, .vttk-barre *, .vttk-outil *,
+.vttk-reglages, .vttk-reglages * { box-sizing: border-box; }
+
+/* ===== LES COULEURS SE LISENT CHEZ LUI, ELLES NE SONT PLUS ÉCRITES ICI =====
+ *
+ * Le premier jet posait un décor sombre en dur — fond #171717, bord #816e54.
+ * Il allait en thème sombre et détonnait en clair, et l'interface de Roll20 est
+ * blanche par défaut : mesuré, `#master-toolbar` a un fond rgb(255,255,255) et
+ * un texte rgb(51,51,51).
+ *
+ * On ne peut pas non plus DEVINER son thème : son bascule `colorTheme` fait
+ * passer son magasin de « light » à « dark » sans qu'AUCUNE de ses variables CSS
+ * ne change ni que sa barre bouge — ces variables-là sont celles de la fiche de
+ * personnage, pas de l'interface du plateau.
+ *
+ * Le pont lit donc les couleurs RENDUES de sa barre et les repose ici, sur nos
+ * boîtes, jamais sur :root. Les valeurs ci-dessous ne sont que des replis, pour
+ * le cas où sa barre serait introuvable. */
+.vttk-barre, .vttk-reglages {
+  --vttk-fond:  #ffffff;
+  --vttk-texte: #333333;
+  --vttk-filet: rgba(0, 0, 0, .2);
+}
+
+.vttk-barre {
+  position: fixed;
+  z-index: 10500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Huit tuiles de 28 et sept écarts de 4, plus le remplissage et le cadre :
+     la largeur DÉCOULE de la grille, elle n'est pas choisie.
+
+     ELLE ÉTAIT FAUSSE, ET ÇA SE VOYAIT. La grille déclarait des colonnes de 26
+     pendant que les boutons en faisaient 30 : chaque tuile débordait de sa case
+     de quatre pixels, et huit d'entre elles réclamaient 261 px dans une grille
+     qui n'en offrait que 229. Les vignettes se chevauchaient d'autant. La
+     tuile, la colonne et la largeur sont désormais UN SEUL calcul. */
+  width: 272px;
+  padding: 8px 9px 10px;
+  background: var(--vttk-fond);
+  color: var(--vttk-texte);
+  border: 1px solid var(--vttk-filet);
+  /* LES DEUX PANNEAUX SONT LE MÊME PANNEAU, et ils ne l'étaient pas.
+   *
+   * Question posée telle quelle : « le style du panneau de paramètres est-il
+   * identique au style du panneau de marqueurs ? » Mesuré côte à côte sur une
+   * vraie partie, la réponse était NON, sur quatre points :
+   *
+   *     police .... proxima-nova   ≠  Proxima Nova
+   *     taille .... 12,5 px        ≠  13 px
+   *     rayon ..... 8 px           ≠  10 px
+   *     ombre ..... une couche     ≠  deux couches
+   *
+   * Ce sont maintenant les valeurs relevées chez Roll20, les mêmes que
+   * ui/roll20.css emploie pour l'autre panneau. La LARGEUR, elle, reste
+   * différente et doit l'être : 272 px n'est pas un choix mais un calcul —
+   * huit tuiles de 28 et sept écarts de 4. Deux panneaux qui portent autre
+   * chose n'ont aucune raison de faire la même largeur.
+   *
+   * Les COULEURS restent celles de Roll20, relues sur sa barre à chaque
+   * ouverture : c'est ce qui fait suivre son thème sans le connaître, et c'est
+   * mieux qu'une palette écrite ici. */
+  border-radius: 10px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .14), 0 1px 18px rgba(0, 0, 0, .12);
+  font: 13px/1.43 "Proxima Nova", proxima-nova, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+/* ===== LES DEUX FAMILLES DE MARQUEURS =====
+ *
+ * Les VÔTRES, qu'on gère ici — ajouter, retirer —, et les MARQUEURS DE ROLL20,
+ * qu'on ne fait que poser. Les seconds sont dessinés par lui, donc visibles de
+ * tout le monde ; les premiers par nous, donc visibles des seuls porteurs de
+ * l'extension. Deux régimes, deux sections, et l'en-tête le dit. */
+.vttk-marqueur-entete {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+}
+/* La casse et la graisse de SES intitulés de section, relevées : 8 px, 600,
+   capitales. On reprend les siennes plutôt que d'en choisir. */
+.vttk-marqueur-entete-mot {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  opacity: .72;
+}
+.vttk-marqueur-entete-note { font-size: 11px; opacity: .55; }
+
+/* Une pastille n'a pas d'image : c'est un disque vectoriel chez Roll20, et c'en
+   est un ici. La teinte vient de SON modèle, lue à l'ouverture et posée en
+   ligne — on ne choisit pas sept couleurs au jugé quand les siennes sont
+   lisibles. */
+.vttk-marqueur-pastille {
+  display: block;
+  width: 17px; height: 17px;
+  margin: auto;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* La croix rouge : « dead » n'a ni image ni entrée de catalogue chez Roll20, il
+   se rend par un maillage à part. On la dessine donc, comme les pastilles. */
+.vttk-marqueur-croix {
+  display: block;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+/* HUIT PAR LIGNE, comme dans sa propre fenêtre. Un enroulement libre donnait un
+   nombre par rang qui dépendait de la largeur du panneau — donc changeant, et
+   jamais aligné d'une section à l'autre. Une grille à huit colonnes fixes range
+   les soixante-dix marqueurs en lignes qui se lisent. */
+.vttk-marqueur-grille {
+  display: grid;
+  grid-template-columns: repeat(8, 28px);
+  gap: 4px;
+  justify-content: start;
+}
+
+/* La tuile porte le marqueur, sa croix de suppression et sa pastille de rang.
+   La croix ne paraît qu'au survol, et seulement en édition — quarante-sept
+   croix affichées en permanence feraient un mur. */
+.vttk-marqueur-tuile { position: relative; line-height: 0; }
+
+/* ---- LE MODE ÉDITION ----
+   Il ne se devine pas : la grille qu'on peut trier le DIT, par un liseré
+   discontinu, et le pointeur change de forme sur ce qui se saisit. Sans ce
+   signal, un panneau où les mêmes tuiles font deux choses différentes selon un
+   état invisible est un piège. */
+.vttk-barre.edition .vttk-marqueur-grille.mienne {
+  outline: 1px dashed color-mix(in srgb, var(--vttk-texte) 28%, transparent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.vttk-marqueur-tuile[draggable="true"] { cursor: grab; }
+.vttk-barre.traine .vttk-marqueur-tuile[draggable="true"] { cursor: grabbing; }
+.vttk-barre.traine .vttk-marqueur-grille.mienne {
+  outline-style: solid;
+  outline-color: #e10085;
+}
+
+/* ---- DEUX PASTILLES, DEUX COINS, DEUX CHOSES ----
+
+   Une seule les portait toutes les deux, au même endroit : le nombre frappé au
+   clavier QUAND il y en avait un, et sinon le rang du clic. Elles ne pouvaient
+   donc jamais paraître ensemble, et rien ne distinguait « ce marqueur portera
+   un 3 » de « ce marqueur est le troisième choisi ».
+
+   · EN BAS À GAUCHE, le NOMBRE appliqué au marqueur — rouge cerné de blanc,
+     comme le compteur que Roll20 dessine sur les siens ;
+   · EN BAS À DROITE, le RANG dans la sélection — rose, comme tout ce qui
+     appartient à l'extension. */
+/* ELLES TIENNENT DANS LA TUILE, ET NE DÉBORDENT PLUS.
+   Elles débordaient de deux pixels de chaque côté pour un écart de quatre entre
+   tuiles : le rang d'une tuile venait toucher le nombre de sa voisine, et les
+   deux se lisaient comme un seul chiffre à rallonge. Rentrées, l'écart des
+   tuiles les sépare tout seul. */
+.vttk-marqueur-nombre,
+.vttk-marqueur-rang {
+  position: absolute;
+  bottom: 0;
+  min-width: 12px; height: 12px;
+  padding: 0 1.5px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  font: 700 8.5px/1 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  pointer-events: none;
+}
+.vttk-marqueur-nombre {
+  left: 0;
+  background: rgb(255, 0, 0);
+  color: #fff;
+  box-shadow: 0 0 0 1px #fff;
+}
+.vttk-marqueur-rang {
+  right: 0;
+  background: #e10085;
+  color: #fff;
+  box-shadow: 0 0 0 1px var(--vttk-fond);
+}
+.vttk-marqueur-nombre[hidden],
+.vttk-marqueur-rang[hidden] { display: none; }
+
+.vttk-marqueur-sup {
+  position: absolute;
+  top: -3px; right: -3px;
+  width: 15px; height: 15px;
+  padding: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  background: #c0392b;
+  color: #fff;
+  border: 0;
+  border-radius: 50%;
+  font: 700 12px/1 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+}
+.vttk-marqueur-tuile:hover .vttk-marqueur-sup,
+.vttk-marqueur-sup:focus-visible { display: flex; }
+
+/* ---- LA BARRE DE TITRE ET SON ROUAGE ----
+   Le titre n'est pas décoratif : c'est lui qui porte le rouage, et le rouage est
+   le seul chemin vers l'ajout, la suppression et le tri. Il tient à droite,
+   là où l'œil va chercher un réglage. */
+/* LE TITRE À GAUCHE, LES DEUX BOUTONS ENSEMBLE À DROITE. Un `space-between` sur
+   TROIS enfants répartit les intervalles également : le rouage se retrouvait au
+   milieu de la barre, loin de la croix, et le regroupement qu'on attend d'une
+   barre de titre disparaissait. C'est la marge automatique du rouage qui pousse
+   le couple à droite, pas une valeur choisie. */
+.vttk-barre-titre {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--vttk-filet);
+}
+.vttk-barre-nom { margin-right: auto; }
+.vttk-barre-nom {
+  font: 600 12px/1.2 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .2px;
+}
+.vttk-barre-rouage {
+  flex: none;
+  width: 22px; height: 22px;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: .62;
+  transition: all .15s ease-in-out;
+}
+.vttk-barre-rouage:hover { opacity: 1; background: color-mix(in srgb, var(--vttk-texte) 9%, transparent); }
+.vttk-barre-rouage.actif { opacity: 1; color: #e10085; border-color: #e10085; }
+.vttk-barre-rouage:focus-visible { outline: 2px solid #e10085; outline-offset: 1px; }
+.vttk-rouage { display: block; width: 14px; height: 14px; }
+
+/* ---- LA CROIX ----
+   Depuis qu'un clic ailleurs ne referme plus la palette, il lui faut une sortie
+   qui se voie. À droite du rouage, là où toute fenêtre porte la sienne. */
+.vttk-barre-ferme {
+  flex: none;
+  width: 22px; height: 22px;
+  margin-left: -2px;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font: 400 17px/1 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+  opacity: .55;
+  transition: all .15s ease-in-out;
+}
+.vttk-barre-ferme:hover {
+  opacity: 1;
+  background: color-mix(in srgb, #c0392b 14%, transparent);
+  color: #c0392b;
+}
+.vttk-barre-ferme:focus-visible { outline: 2px solid #e10085; outline-offset: 1px; }
+
+/* ---- LES DEUX MANIÈRES DE POSER ----
+   Deux moitiés dont une est enfoncée : elles disent l'état ET le choix du même
+   coup, là où un interrupteur dirait « autre mode » sans dire lequel. Des mots,
+   pas des pictogrammes — rien ne dessine « on clique le marqueur puis les
+   tokens » de façon lisible à vingt pixels. */
+.vttk-barre-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--vttk-texte) 7%, transparent);
+  border-radius: 6px;
+}
+.vttk-barre-mode {
+  padding: 4px 2px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: 600 10px/1.2 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .1px;
+  cursor: pointer;
+  opacity: .6;
+  transition: all .15s ease-in-out;
+}
+.vttk-barre-mode:hover { opacity: .9; }
+.vttk-barre-mode.actif {
+  background: var(--vttk-fond);
+  border-color: #e10085;
+  color: #e10085;
+  opacity: 1;
+}
+.vttk-barre-mode:focus-visible { outline: 2px solid #e10085; outline-offset: 1px; }
+
+/* ---- LE MOT DE LA PALETTE ----
+   Elle n'avait de voix qu'en mode édition, dans le compte rendu du formulaire.
+   Or le refus qui compte le plus — « ce token ne vous appartient pas » — arrive
+   en mode ORDINAIRE, et un refus muet passe pour une panne. */
+.vttk-barre-mot {
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--vttk-texte) 7%, transparent);
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: .85;
+}
+.vttk-barre-mot.mauvais {
+  background: color-mix(in srgb, #c0392b 16%, transparent);
+  color: #c0392b;
+  opacity: 1;
+}
+.vttk-barre-mot[hidden] { display: none; }
+
+/* ---- [NOM] [ADRESSE] [+] ----
+   Une seule ligne, parce que c'est un seul geste. La zone de texte à deux
+   lignes qu'il y avait ici demandait de connaître une syntaxe — « Nom | url » —
+   pour faire la chose la plus simple du module. */
+.vttk-marqueur-ajout { display: flex; flex-direction: column; gap: 5px; }
+.vttk-marqueur-ligne { display: flex; gap: 4px; align-items: stretch; }
+
+.vttk-marqueur-champ {
+  min-width: 0;   /* sans quoi un champ en flex refuse de descendre sous sa taille propre */
+  padding: 4px 6px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--vttk-filet);
+  border-radius: 5px;
+  font: 11.5px/1.35 proxima-nova, "Segoe UI", system-ui, sans-serif;
+}
+/* Le nom est court par nature — il est réduit à vingt-quatre caractères avant
+   d'entrer dans l'étiquette ; l'adresse prend tout le reste. */
+.vttk-marqueur-champ.nom { flex: 0 0 72px; }
+.vttk-marqueur-champ.url { flex: 1 1 auto; }
+.vttk-marqueur-champ:focus { outline: none; border-color: #b4006a; }
+.vttk-marqueur-champ::placeholder { opacity: .45; }
+
+.vttk-marqueur-bouton {
+  flex: none;
+  width: 26px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--vttk-filet);
+  border-radius: 5px;
+  font: 600 15px/1 proxima-nova, "Segoe UI", system-ui, sans-serif;
+  cursor: pointer;
+}
+.vttk-marqueur-bouton:hover { border-color: #b4006a; color: #b4006a; }
+.vttk-marqueur-bouton:focus-visible { outline: 2px solid #e10085; outline-offset: 1px; }
+
+.vttk-marqueur-bilan { margin: 0; font-size: 11px; opacity: .7; }
+.vttk-marqueur-bilan.mauvais { color: #c0392b; opacity: 1; }
+
+/* ===== LE PANNEAU DES RÉGLAGES =====
+ *
+ * Ce n'est pas une interface de plus : c'est la MÊME page que le popup du
+ * navigateur — popup/popup.html —, chargée dans un cadre. Une seule
+ * définition de ce que l'extension propose, donc jamais deux qui divergent.
+ *
+ * Le cadre porte sa propre feuille et son propre thème ; on ne lui impose que sa
+ * boîte. Sa largeur est celle pour laquelle le panneau est dessiné (340), et sa
+ * hauteur s'arrête bien avant le bas de l'écran. */
+/* COLLÉ À SA BOÎTE À OUTILS, MÊME HAUTEUR. La position et la hauteur sont
+   posées EN LIGNE par le pont, qui mesure sa barre : le CSS ne sait pas où elle
+   commence ni jusqu'où elle descend. Même géométrie que le plateau de narration
+   de l'extension JJK, où elle a été mise au point.
+
+   Le bord gauche n'est pas arrondi : il touche la barre, et un arrondi y
+   creuserait une encoche entre les deux. */
+/* LES QUATRE COINS S'ARRONDISSENT, ET IL EN FALLAIT DEUX POUR ÇA.
+ *
+ * Signalé : « la fenêtre n'est pas correctement arrondie sur les bords ». Elle
+ * ne l'était en effet que d'un côté — « 0 8px 8px 0 », le bord gauche laissé
+ * droit du temps où elle était collée à la barre d'outils. Elle en est écartée
+ * depuis, et un panneau flottant carré d'un côté n'a plus aucune raison.
+ *
+ * ET LE CADRE DOIT ÊTRE ARRONDI LUI AUSSI. Un « overflow: hidden » sur le
+ * conteneur ne suffit pas : une iframe est un rectangle opaque qui repeint ses
+ * propres coins par-dessus, et l'on voyait quatre angles droits dans une boîte
+ * arrondie. Le rayon se transmet donc au cadre, et le document qu'il porte le
+ * reprend une troisième fois sur son <body> — voir panneau.css.
+ *
+ * Le rayon et l'ombre sont ceux de Roll20, relevés sur « .block-submenu » :
+ * 10 px, et deux ombres superposées. */
+.vttk-reglages {
+  position: fixed;
+  left: 50px;
+  top: 60px;
+  z-index: 10500;
+  display: none;
+  width: 344px;
+  padding: 0;
+  background: var(--vttk-fond);
+  border: 1px solid var(--vttk-filet);
+  border-radius: 10px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .14), 0 1px 18px rgba(0, 0, 0, .12);
+  overflow: hidden;
+}
+.vttk-reglages.ouvert { display: block; }
+
+.vttk-reglages-cadre {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  /* Le rayon du conteneur ne découpe pas ce cadre : il faut le lui donner. */
+  border-radius: inherit;
+  /* Le cadre peint son propre fond ; sans ça, un blanc de navigateur
+     traverserait les coins arrondis de la boîte. */
+  background: transparent;
+  color-scheme: normal;
+}
+
+/* LE TIROIR : il sort du bouton, à droite de sa colonne de 44 px, et il n'existe
+   que quand on l'ouvre. Sa position verticale est posée en ligne, sur celle du
+   bouton — sa colonne peut défiler, et un tiroir resté en bas quand son bouton
+   est en haut n'aurait plus l'air d'en venir. */
+.vttk-barre-tiroir {
+  left: 50px;
+  top: 60px;
+  display: none;
+  /* Elle porte désormais les quarante-sept marqueurs de Roll20 EN PLUS des
+     vôtres : sans hauteur généreuse, la grille tiendrait sur un timbre. On
+     s'arrête tout de même bien avant le bas de la fenêtre. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.vttk-barre-tiroir.ouvert { display: flex; }
+
+/* LE REPLI, quand sa colonne d'outils n'est pas là où on l'attend : la palette
+   tient debout toute seule, en bas à gauche. Même parti que .vttk-zoom-flottant —
+   un module qui ne trouve pas sa boîte ne doit pas disparaître en silence. */
+.vttk-barre-flottante {
+  left: 56px;
+  bottom: 16px;
+  max-width: 40vw;
+}
+
+/* Armée, la palette le dit — sans quoi on clique sur le plateau sans comprendre
+   pourquoi le token ne se déplace plus. */
+.vttk-barre.arme { border-color: #e10085; }
+
+.vttk-barre-marqueur {
+  flex: none;
+  /* LA TUILE FAIT LA COLONNE, ET PAS UN PIXEL DE PLUS. Elle en faisait 30 dans
+     une colonne de 26 : chaque vignette mordait sur sa voisine. */
+  width: 28px; height: 28px;
+  padding: 2px;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s ease-in-out;
+}
+.vttk-barre-marqueur:hover { background: rgba(255, 255, 255, .1); }
+.vttk-barre-marqueur.arme { border-color: #e10085; background: rgba(225, 0, 133, .18); }
+.vttk-barre-marqueur:focus-visible { outline: 2px solid #e10085; outline-offset: 1px; }
+
+/* Les images viennent d'Internet : ni leur taille ni leur proportion ne sont
+   connues. « contain » les range sans les déformer, et le damier fait voir la
+   transparence — sans lui, un fond blanc et un fond absent se ressemblent. */
+/* LE FOND DE LA VIGNETTE SUIT LE THÈME. Il était écrit en dur (#2a2a2a) : un
+   carré presque noir sous chaque image, ce qui allait en thème sombre et
+   dessinait quarante-sept taches en thème clair. On teinte le fond de la boîte
+   au lieu d'en choisir un, et le damier — qui fait voir la transparence, dont
+   presque toute émote est faite — se pose par-dessus, en gris neutre. */
+.vttk-barre-marqueur img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  border-radius: 3px;
+  pointer-events: none;   /* le clic est au bouton, pas à l'image */
+  background-color: color-mix(in srgb, var(--vttk-texte) 8%, transparent);
+  background-image:
+    linear-gradient(45deg, #0000 75%, #80808022 75%),
+    linear-gradient(45deg, #80808022 25%, #0000 25%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+/* ===== LA ZONE DE SAISIE DU CHAT, REPRISE EN ENTIER =====
+ *
+ * Elle mêlait trois rayons de coin, deux épaisseurs de bord, trois hauteurs de
+ * contrôle et un bouton d'envoi qui flottait à droite d'une ligne sans rien pour
+ * le tenir. Mesuré avant de toucher : champ 328 × 46 (coins 3), sélecteurs
+ * 140 × 28 (coins 3), boutons 34 × 30 (coins 4), envoi 68 × 28 (coins 4). Rien
+ * ne s'accordait, et rien ne s'alignait sur rien.
+ *
+ * ON REPREND TOUT SUR UNE SEULE TRAME :
+ *
+ *     [ champ de saisie, pleine largeur                    ]
+ *     [ De : ][ sélecteur              ][ + ][ ☺ ][ GIF ]
+ *     [ À :  ][ sélecteur              ][    Envoyer      ]
+ *
+ * Les deux lignes sont deux GRILLES DE MÊMES COLONNES : l'alignement n'est plus
+ * le produit d'une marge automatique qui tombe juste, il est structurel. Une
+ * seule hauteur de contrôle, un seul rayon, un seul bord.
+ *
+ * ON STYLE DES NOEUDS DE ROLL20, et c'est assumé — l'auteur l'a demandé. On ne
+ * le fait que par des classes à nous, posées par le module et retirées à
+ * l'extinction : la règle « tout sélecteur commence par .vttk- » tient, et rien
+ * n'est repeint chez qui n'a pas l'extension.
+ *
+ * LES COULEURS SE DÉDUISENT DE LA SIENNE. `currentColor` est le texte du chat,
+ * quel que soit son thème : les bords et les fonds en sont tirés par mélange, et
+ * suivent donc un thème sombre sans qu'on ait à le connaître. Seul l'accent est
+ * écrit — c'est le magenta de Roll20, relevé sur son propre glisseur. */
+/* LA ZONE NE DOIT PAS MANGER LE JOURNAL. Mesuré, la même partie avec et sans
+   l'extension : la largeur ne bouge pas d'un pixel — 341 pour le panneau, 340
+   pour le journal, 335 pour la zone —, mais la HAUTEUR de la zone passait de 107
+   à 166 px, et le journal des messages perdait exactement ces 59 px.
+
+   Une seconde ligne coûte forcément quelque chose ; le reste ne le devait pas.
+   Les contrôles reviennent donc à la hauteur des siens (26, sa valeur d'origine
+   étant 28) et les écarts se resserrent, ce qui rend les 59 px. */
+.vttk-chat-zone {
+  --vttk-chat-h: 26px;          /* la hauteur de TOUT contrôle de la zone */
+  --vttk-chat-r: 5px;           /* le rayon de TOUT coin de la zone */
+  --vttk-chat-etiq: 34px;       /* la colonne des intitulés */
+  --vttk-chat-droite: 104px;    /* la colonne de droite : outils, et envoi */
+  --vttk-chat-ecart: 6px;       /* l'écart entre DEUX voisins, où qu'ils soient */
+  --vttk-chat-bord: color-mix(in srgb, currentColor 22%, transparent);
+  --vttk-chat-accent: #b4006a;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--vttk-chat-ecart);
+}
+
+/* Les boîtes hautes de zéro pixel que le module marque : voir chat.js. Sans
+   elles, l'écart de la zone ne se dépense plus qu'une fois entre le champ et
+   nos lignes, et il vaut alors ce qu'il annonce. */
+.vttk-chat-zone .vttk-chat-vide { display: none; }
+
+/* Le champ prend toute la largeur et donne le ton : c'est lui le plus grand
+   élément de la zone, et c'est donc son bord et son rayon que les autres
+   reprennent. */
+/* MÊME « !important » QUE POUR LES SÉLECTEURS, ET POUR LA MÊME RAISON : sa
+   largeur vient d'une feuille servie par cdn.roll20.net, illisible depuis la
+   page. Sans lui, le champ finissait douze pixels plus étroit que les lignes du
+   dessous, et le décalage se voyait tout de suite. */
+.vttk-chat-zone .vttk-chat-saisie {
+  width: 100% !important;
+  box-sizing: border-box;
+  /* SA HAUTEUR D'ORIGINE — 46 px, mesurés. On l'avait montée à 52 « pour
+     respirer », ce qui coûtait six pixels au journal sans rien apporter : le
+     champ grandit tout seul quand on écrit. Et sa marge part, sinon il finit dix
+     pixels plus étroit que les lignes du dessous. */
+  min-height: 46px;
+  margin: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--vttk-chat-bord);
+  border-radius: var(--vttk-chat-r);
+  font: inherit;
+  line-height: 1.4;
+  resize: vertical;
+}
+.vttk-chat-zone .vttk-chat-saisie:focus {
+  outline: none;
+  border-color: var(--vttk-chat-accent);
+}
+
+/* LES DEUX LIGNES SONT LA MÊME GRILLE. C'est ce qui rend l'alignement
+   structurel : les intitulés ont la même largeur parce qu'ils sont dans la même
+   colonne, les sélecteurs aussi, et la colonne de droite commence au même
+   pixel sur les deux lignes — sans qu'aucune valeur n'ait à être copiée de
+   l'une à l'autre. */
+/* L'ÉCART SE PORTE ICI, PAS SUR LA ZONE, et c'est l'arbre qui l'impose.
+   Relevé : les deux lignes ne sont pas filles de la zone de saisie mais d'un
+   <div> intermédiaire, en « display: block », dont l'écart vaut « normal » —
+   celui de la zone ne les atteint donc jamais. Roll20 les séparait par la marge
+   basse de son sélecteur, qui a dû partir pour l'alignement ; sans écart posé
+   là, elles se touchaient au pixel près. */
+.vttk-chat-lignes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vttk-chat-ecart);
+}
+
+.vttk-chat-de-ligne,
+.vttk-chat-a {
+  display: grid;
+  grid-template-columns: var(--vttk-chat-etiq) 1fr var(--vttk-chat-droite);
+  align-items: center;
+  gap: var(--vttk-chat-ecart);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  clear: both;
+}
+
+/* Les intitulés sont alignés à DROITE : collés à leur champ, ils se lisent comme
+   une étiquette et non comme une colonne de texte. */
+/* ET ILS FONT LA HAUTEUR D'UN CONTRÔLE, pas celle de leur texte. Un intitulé nu
+   mesure 18,6 px pour une rangée de 26 : le centrer revient à centrer une boîte
+   d'une autre taille, et son texte se pose alors en haut. Hauteur commune et
+   interligne égal à cette hauteur : le texte se centre DEDANS, et la boîte se
+   confond avec celle du sélecteur d'à côté — il n'y a plus rien à aligner.
+
+   L'INTERLIGNE FAIT CE QUE « display: flex » AURAIT FAIT, et ce n'est pas un
+   choix : posé sur ces intitulés, il ne prend pas. Leur « display: block » vient
+   d'une règle de Roll20 portant un identifiant — au moins 1-0-1 —, quand la
+   nôtre ne porte que des classes. On ne peut pas la battre en spécificité, et un
+   « !important » sur « display » pour obtenir ce qu'un interligne donne aussi
+   bien serait de la force pour rien. */
+/* LE DERNIER DÉCALAGE N'ÉTAIT PAS UNE MARGE, ET AUCUNE MARGE NE L'AURAIT
+   CORRIGÉ. Mesuré sur les deux intitulés : « position: relative ; top: -2px »,
+   posé par Roll20.
+
+   C'est le pire cas possible pour un alignement, parce qu'il est INVISIBLE POUR
+   LA GRILLE : le positionnement relatif laisse la boîte à sa place dans la mise
+   en page — « align-items: center » la voit donc parfaitement centrée — et ne
+   déplace que le dessin. Marges nulles, hauteurs égales, rangée juste, et deux
+   pixels d'écart quand même. Il a fallu relever « top » pour le voir.
+
+   « position: static » annule d'un coup les quatre décalages, quel que soit
+   celui qu'il utilise ; « top: 0 » n'aurait rien fait s'il s'était servi de
+   « bottom ». L'intitulé n'a aucun enfant positionné, rien ne s'y raccroche. */
+.vttk-chat-de,
+.vttk-chat-etiquette {
+  justify-self: end;
+  position: static !important;
+  height: var(--vttk-chat-h);
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  line-height: var(--vttk-chat-h);
+  opacity: .72;
+  white-space: nowrap;
+}
+
+/* LES DEUX SÉLECTEURS SONT IDENTIQUES PARCE QU'ILS REMPLISSENT LA MÊME COLONNE.
+   Le module n'a plus à recopier la largeur de l'un sur l'autre — il le faisait à
+   chaque passage de son guet, et se trompait tant que Roll20 n'avait pas fini de
+   charger ses options. */
+/* « !important » SUR LA SEULE LARGEUR, ET IL EST MÉRITÉ.
+
+   Son sélecteur gardait 140 px là où sa colonne en offre 176, si bien que les
+   deux ne se terminaient pas au même endroit. Cette largeur ne lui vient ni d'un
+   style en ligne ni d'une règle qu'on puisse lire : ses feuilles sont servies
+   depuis cdn.roll20.net, et l'énumération de leurs règles lève une erreur de
+   sécurité — vérifié en les parcourant toutes. On ne peut donc ni la trouver ni
+   la dépasser par la spécificité, et c'est exactement le cas où ce mot-clé est
+   la seule voie.
+
+   Il ne porte que sur la largeur, sur deux classes à nous, dans une zone que
+   l'auteur a demandé de reprendre. */
+/* LA MARGE HÉRITÉE ÉTAIT LA CAUSE DU DÉSALIGNEMENT, et il a fallu la mesurer
+   pour le savoir : la feuille disait déjà « même grille, align-items: center »,
+   ce qui aurait dû suffire.
+
+   Relevé sur une vraie partie, les deux sélecteurs portent « margin: 0 15px 9px 0 »
+   — celle de Roll20, héritée avec ses classes. Or « center » centre la BOÎTE DE
+   MARGE : le sélecteur, haut de 26 px plus 9 de marge basse, occupait une rangée
+   de 35 et son cadre visible tombait 4,5 px AU-DESSUS du centre, pendant que le
+   bouton d'envoi et les trois outils, sans marge, tombaient au vrai centre. D'où
+   « À : » et « Envoyer » décalés sur la même ligne.
+
+   Les 9 px du bas gonflaient en outre chaque rangée de 26 à 35 — dix-huit pixels
+   pris au journal des messages pour rien.
+
+   « !important » pour la même raison que la largeur : la règle qui les pose est
+   dans une feuille de cdn.roll20.net, que la page ne peut pas lire. */
+.vttk-chat-zone .vttk-chat-choix,
+.vttk-chat-zone .vttk-chat-select {
+  width: 100% !important;
+  margin: 0 !important;
+  min-width: 0;
+  box-sizing: border-box;
+  height: var(--vttk-chat-h);
+  padding: 0 8px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--vttk-chat-bord);
+  border-radius: var(--vttk-chat-r);
+  font: inherit;
+}
+.vttk-chat-zone .vttk-chat-choix:focus,
+.vttk-chat-zone .vttk-chat-select:focus { outline: none; border-color: var(--vttk-chat-accent); }
+
+/* La colonne de droite, sur les deux lignes : trois parts égales en haut, une
+   seule en bas. C'est ce qui donne à l'envoi TOUTE la largeur de sa zone. */
+/* Les trois outils sont un GROUPE : ils se serrent entre eux plus qu'ils ne le
+   sont du reste, faute de quoi ils se lisent comme trois boutons sans rapport. */
+.vttk-chat-outils {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
+/* MARGE NULLE ICI AUSSI, et ce n'est pas de la précaution : le bouton d'envoi
+   est CELUI DE ROLL20, repris avec sa classe .btn. Ce qu'elle lui donne est
+   illisible pour la même raison que le reste ; ne pas l'annuler, c'est laisser
+   le même défaut revenir par l'autre bout de la ligne. */
+.vttk-chat-bouton,
+.vttk-chat-envoi {
+  box-sizing: border-box;
+  height: var(--vttk-chat-h);
+  margin: 0 !important;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--vttk-chat-r);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.vttk-chat-bouton {
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--vttk-chat-bord);
+  font-size: 12px;
+  opacity: .5;
+  cursor: default;
+}
+.vttk-chat-icone { display: block; width: 15px; height: 15px; }
+
+/* L'ENVOI PREND TOUTE SA COLONNE, et il est le seul élément plein de la zone :
+   c'est l'action principale, et rien d'autre ici n'en est une. */
+.vttk-chat-zone .vttk-chat-envoi {
+  width: 100%;
+  background: var(--vttk-chat-accent);
+  color: #fff;
+  border: 1px solid var(--vttk-chat-accent);
+  /* SES DEUX OMBRES PARTENT ENSEMBLE, et n'en annuler qu'une était un oubli.
+     La classe .btn de Roll20 pose un texte ombré ET un liseré blanc interne
+     avec une ombre portée — la marque d'un bouton en relief, qui n'a plus de
+     sens sur un bouton plein et plat. Le liseré ne ressort dans aucune mesure :
+     il ne se voit qu'à l'œil, sur le seul élément plein de la zone. */
+  text-shadow: none;
+  box-shadow: none;
+  cursor: pointer;
+  transition: filter .15s ease-in-out;
+}
+.vttk-chat-envoi:hover { filter: brightness(1.12); }
+.vttk-chat-envoi:active { filter: brightness(.92); box-shadow: none; }
+.vttk-chat-envoi:focus-visible { outline: 2px solid var(--vttk-chat-accent); outline-offset: 2px; }
+
+/* LE CHUCHOTEMENT SE VOIT. C'est la différence entre un message que toute la
+   table lit et un message privé — la laisser dans un menu déroulant refermé
+   serait le meilleur moyen de parler en public en croyant chuchoter. */
+.vttk-chat-a.chuchote .vttk-chat-etiquette { color: var(--vttk-chat-accent); opacity: 1; }
+.vttk-chat-a.chuchote .vttk-chat-select {
+  border-color: var(--vttk-chat-accent);
+  box-shadow: inset 0 0 0 1px var(--vttk-chat-accent);
+}
+
+/* ---------- LE PANNEAU D'ÉMOJIS ----------
+ *
+ * IL EST POSÉ SUR <BODY>, ET C'EST LA SEULE FAÇON DE NE PAS ÊTRE COUPÉ. La
+ * barre latérale de Roll20 découpe ce qui dépasse ; un panneau posé dans le
+ * pied de chat en sortirait par le haut et se ferait rogner à l'endroit exact
+ * où il devient utile. En position fixe, il flotte au-dessus de tout.
+ *
+ * IL N'HÉRITE DONC PLUS DES COULEURS DE LA ZONE, puisqu'il n'en descend plus.
+ * Le module lui pose sa couleur de texte et son fond à l'ouverture, relevés sur
+ * la zone : c'est ce qui le fait suivre un thème sombre sans qu'on ait à le
+ * connaître. Tout le reste s'en déduit par mélange, comme ailleurs. */
+.vttk-emoji-panneau {
+  position: fixed;
+  z-index: 2147483000;
+  /* SANS CELA, LA LARGEUR DEMANDÉE N'EST PAS LA LARGEUR RENDUE. Le module lui
+     pose la largeur exacte du champ de saisie ; en boîte de contenu, ses six
+     pixels de marge intérieure de chaque côté et ses deux bords s'y ajoutaient,
+     et le panneau sortait quatorze pixels trop large — assez pour déborder de
+     la barre latérale par la droite. */
+  box-sizing: border-box;
+  /* SANS CELA, LA LARGEUR DEMANDÉE N'EST PAS LA LARGEUR RENDUE. Le module lui
+     pose la largeur exacte du champ de saisie ; en boîte de contenu, ses six
+     pixels de marge intérieure de chaque côté et ses deux bords s'y ajoutaient,
+     et le panneau sortait quatorze pixels trop large — assez pour déborder de
+     la barre latérale par la droite. */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
+  font: inherit;
+}
+
+.vttk-emoji-onglets {
+  display: flex;
+  gap: 2px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.vttk-emoji-onglet {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: .55;
+  transition: opacity .12s ease-in-out, background-color .12s ease-in-out;
+}
+.vttk-emoji-onglet:hover { opacity: 1; background: color-mix(in srgb, currentColor 10%, transparent); }
+/* L'ONGLET COURANT SE VOIT PAR UN TRAIT, pas par un fond : les onglets sont des
+   émojis, c'est-à-dire des dessins en couleur, et un fond derrière eux les
+   salit au lieu de les désigner. */
+.vttk-emoji-onglet.choisi {
+  opacity: 1;
+  box-shadow: inset 0 -2px 0 var(--vttk-chat-accent, #b4006a);
+}
+
+/* Le nom de la catégorie, en petit : c'est la seule chose qui dise où l'on est
+   quand les onglets sont eux-mêmes des images. */
+.vttk-emoji-titre {
+  padding: 5px 2px 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  opacity: .5;
+}
+
+/* LA GRILLE SE REMPLIT TOUTE SEULE. « auto-fill » avec une taille minimale
+   donne autant de colonnes que la largeur en permet : le panneau suit celle de
+   la zone de chat, qui se redimensionne, et aucune valeur n'est à recopier. */
+.vttk-emoji-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 1px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 0;
+}
+
+.vttk-emoji-tuile {
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .1s ease-in-out, transform .1s ease-in-out;
+}
+.vttk-emoji-tuile:hover { background: color-mix(in srgb, currentColor 12%, transparent); transform: scale(1.18); }
+.vttk-emoji-tuile:active { transform: scale(.96); }
+.vttk-emoji-tuile:focus-visible { outline: 2px solid var(--vttk-chat-accent, #b4006a); outline-offset: -2px; }
+
+.vttk-emoji-vide {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 8px;
+  font-size: 12px;
+  text-align: center;
+  opacity: .55;
+}
+
+/* Le bouton qui l'ouvre n'est plus un bouton à venir : il s'allume, et reste
+   allumé tant que le panneau est là. */
+.vttk-chat-emoji {
+  opacity: .75;
+  cursor: pointer;
+}
+.vttk-chat-emoji:hover { opacity: 1; }
+.vttk-chat-emoji.ouvert {
+  opacity: 1;
+  color: var(--vttk-chat-accent);
+  border-color: var(--vttk-chat-accent);
+}

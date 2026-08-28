@@ -1,0 +1,34 @@
+# FINS DE LIGNE — ET CE N'EST PAS UN DÉTAIL DE CONFORT.
+#
+# Le poste est réglé en « core.autocrlf = true ». Sans ce fichier, git rend des
+# CRLF au premier « checkout » alors que TOUT le dépôt est écrit en LF pur —
+# mesuré octet par octet avant le premier commit : 0 retour chariot sur 31 000
+# lignes. Les octets sortis ne seraient donc pas les octets entrés.
+#
+# Ce que ça casserait, précisément : le banc compare des TEXTES. Il vérifie
+# l'espacement intérieur de certains commentaires, il compare deux blocs
+# recopiés caractère pour caractère, et il relève des empreintes. Une conversion
+# silencieuse entre deux machines, ou entre deux clones de la même machine,
+# ferait échouer des contrôles sans qu'une seule ligne ait bougé — et l'on
+# chercherait la faute dans le code.
+#
+# « eol=lf » et non « text=auto » : le second devine, et deviner est précisément
+# ce qu'on refuse ici.
+* text eol=lf
+
+# Le binaire ne se convertit jamais.
+*.png binary
+*.ico binary
+*.xpi binary
+*.sqlite binary
+*.db binary
+
+# Le SVG est du texte, mais il porte des dimensions : on le range avec le reste
+# du texte plutôt que de le laisser au hasard de la détection.
+*.svg text eol=lf
+
+# La table Unicode est une donnée d'amont, recopiée telle quelle. Elle doit
+# rester octet pour octet ce qu'Unicode publie, sinon le générateur qui la relit
+# ne reconnaît plus sa source.
+outils/donnees/emoji-test.txt -text
+outils/emoji-test.txt -text

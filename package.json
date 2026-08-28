@@ -1,0 +1,22 @@
+{
+  "name": "vttinker",
+  "version": "0.50.0",
+  "private": true,
+  "description": "Outillage de developpement de l extension VTTinker. Ne fait PAS partie du paquet livre. Le numero de version suit celui du manifeste, qui fait foi.",
+  "scripts": {
+    "banc": "node outils/verifie.js",
+    "paquet": "node outils/paquet.js",
+    "signe": "node outils/signe.js",
+    "publie": "node outils/publie.js",
+    "site": "mkdocs serve",
+    "pilote": "node outils/pilote.js",
+    "connexion": "node outils/connexion-humaine.js",
+    "ferme": "node outils/ferme-pilote.js",
+    "reveille": "node outils/reveille.js"
+  },
+  "devDependencies": {
+    "geckodriver": "^6.1.1",
+    "selenium-webdriver": "^4.47.0",
+    "web-ext": "^10.6.0"
+  }
+}

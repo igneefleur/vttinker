@@ -1,0 +1,17 @@
+/* LA FENÊTRE DE L'EXTENSION — quatre lignes, et pas une de plus.
+ *
+ * Tout ce qui ressemble à Roll20 est dans ui/roll20.css, relevé sur ses propres
+ * panneaux. Il ne reste ici que ce qui est propre à cette fenêtre : sa largeur,
+ * et le fait que sa bascule est à droite de son titre. */
+
+body {
+  width: 268px;
+}
+
+/* La bascule de l'en-tête est l'interrupteur GÉNÉRAL : elle se pousse au bout
+   de la ligne, à l'opposé du nom, parce qu'elle ne commande pas le titre mais
+   tout ce qui est en dessous. */
+.tete-bascule { margin-left: auto; }
+
+/* Éteinte, la fenêtre garde ses lignes — on doit pouvoir choisir sa langue
+   avant de rallumer, et surtout retrouver l'interrupteur là où on l'a laissé. */

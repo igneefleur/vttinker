@@ -1,0 +1,337 @@
+/* LE STYLE DE ROLL20 — RELEVÉ SUR SES PROPRES PANNEAUX, PAS IMITÉ.
+ *
+ * Demandé : « respecte les normes de Roll20 », « du style à la Roll20 », « le
+ * texte est trop grand ». On n'y répond pas de mémoire : chaque valeur
+ * ci-dessous a été lue sur une vraie partie, dans son propre panneau de
+ * réglages (`.block-submenu`) et dans sa barre latérale.
+ *
+ *     police dominante ......... Proxima Nova
+ *     taille dominante ......... 13 px  (1591 nœuds sur 2823)
+ *     interligne ............... 18,57 px
+ *     titre de panneau ......... 16 px, Proxima Nova Condensed, gras 600
+ *     texte courant ............ rgb(98, 91, 101)
+ *     texte fort ............... rgb(41, 33, 46)
+ *     fond de panneau .......... blanc, rayon 10 px
+ *     en-tête de panneau ....... rayon 12px 12px 0 0
+ *     ombre .................... 0 6px 10px rgba(0,0,0,.14), 0 1px 18px rgba(0,0,0,.12)
+ *     accent ................... rgb(225, 0, 133)
+ *     rayon d'un bouton ........ 4 px
+ *
+ * L'ACCENT ÉTAIT FAUX PARTOUT AILLEURS. On employait #b4006a, relevé à l'œil sur
+ * une capture ; le sien est #e10085. Deux magentas voisins dans la même page se
+ * voient plus qu'une couleur franchement autre.
+ *
+ * CETTE FEUILLE SERT LES DEUX SURFACES — la fenêtre de l'extension et le panneau
+ * de la boîte à outils. Ce sont deux pages d'extension, elles n'héritent de rien
+ * de Roll20 : tout ce qui doit lui ressembler est ici, écrit une fois.
+ */
+
+:root {
+  --r20-police: "Proxima Nova", proxima-nova, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --r20-police-titre: "Proxima Nova Condensed", "Proxima Nova", proxima-nova, Helvetica, Arial, sans-serif;
+
+  --r20-taille: 13px;
+  --r20-taille-titre: 16px;
+  --r20-taille-menue: 11px;
+  --r20-interligne: 1.43;
+
+  --r20-texte: rgb(98, 91, 101);
+  --r20-texte-fort: rgb(41, 33, 46);
+  --r20-texte-doux: rgb(140, 134, 143);
+  --r20-fond: #fff;
+  --r20-fond-doux: #f5f5f5;
+  --r20-trait: rgba(41, 33, 46, .12);
+  --r20-accent: rgb(225, 0, 133);
+
+  --r20-rayon: 10px;
+  --r20-rayon-bouton: 4px;
+  --r20-ombre: 0 6px 10px rgba(0, 0, 0, .14), 0 1px 18px rgba(0, 0, 0, .12);
+
+  --r20-h: 26px;          /* la hauteur d'un contrôle */
+  --r20-ecart: 8px;
+}
+
+/* ---------- LA NUIT ----------
+ *
+ * TROIS ÉCRITURES, ET IL EN FAUT TROIS. Le thème a trois valeurs — automatique,
+ * jour, nuit — et « automatique » ne pose AUCUN attribut : c'est la seule façon
+ * que la préférence du navigateur puisse encore décider. D'où :
+ *
+ *   · la palette claire sur « :root » nu, qui vaut par défaut ;
+ *   · la même en sombre sous « prefers-color-scheme: dark », mais SEULEMENT si
+ *     l'on n'a pas explicitement demandé le jour — sans ce garde, choisir
+ *     « jour » sur un système en sombre ne donnerait rien ;
+ *   · la même en sombre sous « [data-theme=nuit] », pour que le choix explicite
+ *     gagne dans l'autre sens.
+ *
+ * Une couleur qui n'aurait sa définition QUE dans un bloc conditionnel
+ * manquerait dans l'autre : les trois blocs portent donc les mêmes clés.
+ *
+ * LES DEUX ANCRES DE LA NUIT SONT CELLES DE ROLL20, relevées sur son thème
+ * sombre : fond rgb(23, 23, 23), texte rgb(230, 230, 230). Le reste s'en
+ * déduit, et l'accent ne change pas — c'est une marque, pas une couleur de
+ * fond. */
+:root[data-theme="nuit"],
+:root[data-theme="nuit"] body {
+  --r20-texte: rgb(185, 180, 189);
+  --r20-texte-fort: rgb(230, 230, 230);
+  --r20-texte-doux: rgb(139, 134, 143);
+  --r20-fond: rgb(23, 23, 23);
+  --r20-fond-doux: rgb(32, 32, 32);
+  --r20-trait: rgba(255, 255, 255, .13);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="jour"]) {
+    --r20-texte: rgb(185, 180, 189);
+    --r20-texte-fort: rgb(230, 230, 230);
+    --r20-texte-doux: rgb(139, 134, 143);
+    --r20-fond: rgb(23, 23, 23);
+    --r20-fond-doux: rgb(32, 32, 32);
+    --r20-trait: rgba(255, 255, 255, .13);
+  }
+}
+
+/* LE RAIL D'UN INTERRUPTEUR ÉTEINT, et LUI SEUL.
+ *
+ * Le premier jet visait « .r20-bascule .rail » tout court. Ça pèse 0-4-0 —
+ * :root, l'attribut, et deux classes — quand la règle qui colore un
+ * interrupteur ALLUMÉ ne pèse que 0-3-0. La nuit repeignait donc en gris les
+ * interrupteurs allumés : quatre modules actifs, quatre rails éteints, et rien
+ * à l'écran ne disait qu'ils tournaient.
+ *
+ * Le « :not(:checked) » ne change pas le poids, il change la CIBLE : les deux
+ * règles ne se disputent plus le même élément. */
+:root[data-theme="nuit"] .r20-bascule input:not(:checked) + .rail {
+  background: rgba(255, 255, 255, .22);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="jour"]) .r20-bascule input:not(:checked) + .rail {
+    background: rgba(255, 255, 255, .22);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--r20-fond);
+  color: var(--r20-texte);
+  font-family: var(--r20-police);
+  font-size: var(--r20-taille);
+  line-height: var(--r20-interligne);
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- LES TITRES ----------
+   Condensée et grasse, comme les siens. C'est le seul endroit où l'on dépasse
+   13 px, et il n'y en a qu'un par surface. */
+.r20-titre {
+  margin: 0;
+  font-family: var(--r20-police-titre);
+  font-size: var(--r20-taille-titre);
+  font-weight: 600;
+  color: var(--r20-texte-fort);
+  letter-spacing: .01em;
+}
+
+/* Un intertitre de section : menu, en capitales, discret. C'est sa façon à lui
+   de séparer sans tracer un trait de plus. */
+.r20-section {
+  margin: 0;
+  padding: 10px 12px 4px;
+  font-size: var(--r20-taille-menue);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--r20-texte-doux);
+}
+
+/* ---------- L'EN-TÊTE ----------
+   Rayon 12px en haut seulement : c'est sa valeur, et elle est volontairement
+   plus grande que celle du cadre pour que le coin reste plein. */
+.r20-tete {
+  display: flex;
+  align-items: center;
+  gap: var(--r20-ecart);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--r20-trait);
+  border-radius: 12px 12px 0 0;
+  background: var(--r20-fond);
+}
+
+/* ---------- UNE LIGNE : intitulé à gauche, contrôle à droite ----------
+   Toute la surface est faite de ça, et rien d'autre. Pas de carte, pas de
+   cadre, pas de description : un nom, un contrôle, un trait. */
+.r20-ligne {
+  display: flex;
+  align-items: center;
+  gap: var(--r20-ecart);
+  min-height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--r20-trait);
+}
+.r20-ligne:last-child { border-bottom: 0; }
+.r20-ligne > .r20-nom { flex: 1 1 auto; min-width: 0; }
+
+.r20-nom {
+  color: var(--r20-texte-fort);
+  font-weight: 500;
+}
+
+/* Une ligne en retrait : un réglage appartient au module au-dessus de lui, et
+   l'indentation le dit mieux qu'un encadré. */
+.r20-ligne.r20-fille {
+  padding-left: 24px;
+  min-height: 30px;
+  background: var(--r20-fond-doux);
+}
+.r20-ligne.r20-fille .r20-nom { color: var(--r20-texte); font-weight: 400; }
+
+/* ---------- L'INTERRUPTEUR ----------
+   Le sien est un rail arrondi, pas une case à cocher. La case d'origine reste
+   dans le document, invisible mais atteignable au clavier : c'est elle qui
+   porte l'état, le focus et l'accessibilité. */
+.r20-bascule {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 18px;
+  display: inline-block;
+}
+.r20-bascule input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.r20-bascule .rail {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: rgba(41, 33, 46, .22);
+  transition: background-color .14s ease-in-out;
+  pointer-events: none;
+}
+.r20-bascule .rail::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  transition: transform .14s ease-in-out;
+}
+.r20-bascule input:checked + .rail { background: var(--r20-accent); }
+.r20-bascule input:checked + .rail::after { transform: translateX(16px); }
+.r20-bascule input:focus-visible + .rail { outline: 2px solid var(--r20-accent); outline-offset: 2px; }
+.r20-bascule input:disabled { cursor: default; }
+.r20-bascule input:disabled + .rail { opacity: .45; }
+
+/* ---------- LES CHAMPS ----------
+   « on retire ces flèches pour augmenter la taille du zoom et la réduire » :
+   les compteurs d'un champ numérique sont dessinés par le navigateur, pas par
+   nous, et ils ne ressemblent à rien de ce que Roll20 emploie. On les retire
+   des deux façons qui existent — la propriété standard et le pseudo-élément de
+   WebKit —, et le champ redevient un champ. */
+.r20-champ {
+  flex: 0 0 auto;
+  width: 68px;
+  height: var(--r20-h);
+  padding: 0 8px;
+  background: var(--r20-fond);
+  color: var(--r20-texte-fort);
+  border: 1px solid var(--r20-trait);
+  border-radius: var(--r20-rayon-bouton);
+  font: inherit;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.r20-champ::-webkit-outer-spin-button,
+.r20-champ::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.r20-champ:focus { outline: none; border-color: var(--r20-accent); }
+.r20-champ.r20-large { width: 100%; text-align: left; }
+
+.r20-unite {
+  flex: 0 0 auto;
+  min-width: 3.2em;
+  color: var(--r20-texte-doux);
+  font-size: var(--r20-taille-menue);
+}
+
+.r20-select {
+  flex: 0 0 auto;
+  height: var(--r20-h);
+  min-width: 128px;
+  padding: 0 6px;
+  background: var(--r20-fond);
+  color: var(--r20-texte-fort);
+  border: 1px solid var(--r20-trait);
+  border-radius: var(--r20-rayon-bouton);
+  font: inherit;
+}
+.r20-select:focus { outline: none; border-color: var(--r20-accent); }
+
+/* ---------- LES BOUTONS ---------- */
+.r20-bouton {
+  height: var(--r20-h);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--r20-fond);
+  color: var(--r20-texte-fort);
+  border: 1px solid var(--r20-trait);
+  border-radius: var(--r20-rayon-bouton);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .12s ease-in-out;
+}
+.r20-bouton:hover { background: var(--r20-fond-doux); }
+.r20-bouton:focus-visible { outline: 2px solid var(--r20-accent); outline-offset: 2px; }
+.r20-bouton.r20-plein {
+  background: var(--r20-accent);
+  border-color: var(--r20-accent);
+  color: #fff;
+}
+.r20-bouton.r20-plein:hover { filter: brightness(1.08); background: var(--r20-accent); }
+
+/* UN BOUTON QUI N'OUVRE RIEN LE DIT. Les deux liens sont préparés et ne mènent
+   nulle part encore : les laisser cliquables serait promettre une page. */
+.r20-bouton:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.r20-bouton:disabled:hover { background: var(--r20-fond); }
+
+/* ---------- LE PIED ---------- */
+.r20-pied {
+  display: flex;
+  align-items: center;
+  gap: var(--r20-ecart);
+  padding: 8px 12px;
+  border-top: 1px solid var(--r20-trait);
+  background: var(--r20-fond-doux);
+  border-radius: 0 0 var(--r20-rayon) var(--r20-rayon);
+  font-size: var(--r20-taille-menue);
+  color: var(--r20-texte-doux);
+}
+.r20-pied .r20-pousse { margin-left: auto; }
+
+/* Un mot qu'on dit quand il n'y a rien à montrer. */
+.r20-vide {
+  margin: 0;
+  padding: 14px 12px;
+  color: var(--r20-texte-doux);
+  text-align: center;
+}
+
+/* Ce qui est éteint se voit éteint, sans disparaître : on doit pouvoir le
+   rallumer là où on l'a laissé. */
+.r20-endormi { opacity: .4; pointer-events: none; }

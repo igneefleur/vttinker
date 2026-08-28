@@ -1,0 +1,91 @@
+# LE SITE DE VTTINKER
+#
+# Il ne fait qu'une chose : donner l'extension à installer, et dire comment.
+# Tout ce qui est de l'ordre du carnet de développement reste dans le dépôt —
+# ces pages-là s'adressent à quelqu'un qui veut jouer, pas lire du code.
+#
+# « docs_dir: site » et non « docs » : le dossier « docs/ » est réservé à la
+# documentation de développement, qui n'a pas à être publiée. Les deux vivraient
+# mal au même endroit — l'un s'adresse à un joueur, l'autre à celui qui répare.
+#
+# « site_dir: .site » commence par un point : il est ignoré par git, parce qu'un
+# résultat de construction n'entre jamais dans une branche de source. Il est
+# poussé tel quel sur « gh-pages ».
+
+site_name: VTTinker
+site_description: Des outils pour Roll20 — bornes du zoom, grille hors carte, marqueurs de jeton, retouches du tchat. Firefox et Chrome.
+site_author: igneefleur
+site_url: https://igneefleur.github.io/vttinker/
+docs_dir: site
+site_dir: .site
+
+repo_url: https://github.com/igneefleur/vttinker
+repo_name: igneefleur/vttinker
+edit_uri: ""
+
+copyright: Tous droits réservés — le code est lisible, il n'est pas libre de droits.
+
+theme:
+  name: material
+  language: fr
+  # LA POLICE EST CELLE DE ROLL20, et le site est fait pour être lu à côté.
+  # « Proxima Nova » d'abord — beaucoup l'ont déjà — puis un équivalent qui se
+  # charge partout. On ne laisse pas le navigateur choisir : une extension qui
+  # se fond dans Roll20 mérite un site qui lui ressemble.
+  font:
+    text: Nunito Sans
+    code: IBM Plex Mono
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.top
+    - content.code.copy
+    - toc.integrate
+  palette:
+    # LES TROIS ÉTATS, comme dans l'extension : le système décide, et l'on peut
+    # passer outre. Le panneau de réglages tient exactement la même règle.
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Suivre le système
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Passer en sombre
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Suivre le système
+
+extra_css:
+  - styles/vttinker.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+
+nav:
+  - Installer: index.md
+  - Ce que ça fait: modules.md
+  - Questions: questions.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/igneefleur/vttinker
+      name: Le code

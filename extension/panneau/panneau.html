@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VTTinker</title>
+  <link rel="stylesheet" href="../ui/roll20.css">
+  <link rel="stylesheet" href="panneau.css">
+  <!-- Bloquants et dans cet ordre : langue.js et catalogue.js doivent exister
+       avant que panneau.js les lise, et marqueurs.js avant qu'il valide une
+       adresse. Pas de script en ligne : la CSP d'une page d'extension le
+       refuserait en silence. -->
+  <script src="../commun/000-navigateur.js"></script>
+  <script src="../commun/langue.js"></script>
+  <script src="../commun/catalogue.js"></script>
+  <script src="../commun/marqueurs.js"></script>
+  <script src="panneau.js"></script>
+</head>
+<body>
+
+<!-- CE QUE CE PANNEAU EST : ce que l'extension FAIT dans cette partie. Un
+     module par ligne, ses réglages en retrait, et rien d'autre — pas de
+     description, pas de carte, pas d'encadré. C'est la boîte à outils : on y
+     vient allumer et éteindre, pas y lire. -->
+<main id="corps"></main>
+
+</body>
+</html>

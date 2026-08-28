@@ -1,0 +1,56 @@
+/* LE PANNEAU DE LA BOÎTE À OUTILS.
+ *
+ * Tout ce qui ressemble à Roll20 est dans ui/roll20.css, relevé sur ses propres
+ * panneaux. Il ne reste ici que ce qui est propre à cette surface : elle vit
+ * dans un CADRE posé sur la partie, et un cadre a deux contraintes qu'une
+ * fenêtre n'a pas.
+ *
+ * 1. LE COIN ARRONDI SE COUPE DANS LE CADRE, PAS SEULEMENT AUTOUR. Le panneau
+ *    « n'est pas correctement arrondi sur les bords », et c'est structurel : le
+ *    conteneur posé sur la page portait bien un rayon, mais l'iframe à
+ *    l'intérieur est un rectangle opaque qui repeint les quatre coins par
+ *    dessus. Il faut donc que le CADRE lui-même soit arrondi — d'où le rayon
+ *    ici, en plus de celui du conteneur — et que son document ne peigne rien
+ *    au-delà.
+ *
+ * 2. LE FOND EST PORTÉ PAR LE CORPS, pas par la page. Un <html> peint jusqu'aux
+ *    bords du cadre, coins compris ; c'est <body> qui porte le rayon et le
+ *    fond, et <html> reste transparent.
+ */
+
+html {
+  background: transparent;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--r20-fond);
+  border-radius: var(--r20-rayon);
+}
+
+/* ---------- CE QU'ON DIT SOUS UNE LIGNE ----------
+   Une note en retrait, en petit : elle appartient à la ligne du dessus, et
+   l'indentation le dit. C'est le seul texte de ce panneau qui fasse une phrase,
+   et il n'y est que parce qu'il envoie ailleurs. */
+.r20-note {
+  margin: 0;
+  padding: 0 12px 8px 24px;
+  background: var(--r20-fond-doux);
+  border-bottom: 1px solid var(--r20-trait);
+  color: var(--r20-texte-doux);
+  font-size: var(--r20-taille-menue);
+}
+
+/* Le refus d'une saisie, en bas, dans l'accent. Il s'efface dès que la saisie
+   redevient bonne : un message qui reste après correction apprend à ne plus
+   le lire. */
+.mq-refus {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--r20-accent);
+  font-size: var(--r20-taille-menue);
+}

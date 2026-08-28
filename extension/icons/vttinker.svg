@@ -1,0 +1,12 @@
+<!-- La SOURCE de l'icône. Les deux PNG du manifeste en sont le rendu.
+     On déclare les PNG et non ce fichier : Firefox accepte le SVG, Chrome non,
+     et un manifeste que Chrome refuse de charger n'aide personne.
+     Couleurs : celles de la fiche D&D 2024 (voir ui/theme.css). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <rect x="3" y="3" width="90" height="90" rx="21" ry="21"
+        fill="#1f1f1f" stroke="#816e54" stroke-width="3.4"/>
+  <text x="48" y="55" text-anchor="middle" dominant-baseline="middle"
+        font-family="Segoe UI, system-ui, sans-serif" font-size="50" font-weight="700"
+        fill="#c7a16b">V</text>
+  <rect x="28" y="67" width="40" height="7" fill="#d72f2f"/>
+</svg>

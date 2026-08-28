@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "VTTinker",
+  "version": "0.50.0",
+  "description": "Outils pour Roll20 : de petites et de grandes retouches, activables une par une.",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "vttinker@igneefleur",
+      "strict_min_version": "115.0"
+    }
+  },
+
+  "permissions": ["storage"],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "VTTinker",
+    "default_icon": { "48": "icons/48.png", "96": "icons/96.png" }
+  },
+  "icons": { "48": "icons/48.png", "96": "icons/96.png" },
+
+  "content_scripts": [
+    {
+      "matches": ["https://app.roll20.net/editor*"],
+      "js": [
+        "commun/000-navigateur.js",
+        "commun/langue.js",
+        "commun/catalogue.js",
+        "commun/marqueurs.js",
+        "commun/emojis.js",
+        "contenu/000-socle.js",
+        "contenu/modules/zoom.js",
+        "contenu/modules/grille.js",
+        "contenu/modules/marqueurs.js",
+        "contenu/modules/chat.js",
+        "contenu/999-demarrage.js"
+      ],
+      "css": ["ui/overlay.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["page/pont.js",
+                    "popup/popup.html", "popup/popup.css", "popup/popup.js",
+                    "panneau/panneau.html", "panneau/panneau.css", "panneau/panneau.js",
+                    "commun/000-navigateur.js", "commun/langue.js", "commun/catalogue.js", "commun/marqueurs.js", "commun/emojis.js",
+                    "ui/roll20.css"],
+      "matches": ["https://app.roll20.net/editor*"]
+    }
+  ]
+}

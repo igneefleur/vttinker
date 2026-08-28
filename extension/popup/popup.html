@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VTTinker</title>
+  <link rel="stylesheet" href="../ui/roll20.css">
+  <link rel="stylesheet" href="popup.css">
+  <!-- Les scripts sont dans l'en-tête, bloquants, et dans cet ordre : langue.js
+       et catalogue.js doivent exister avant que popup.js les lise, et popup.js
+       doit avoir dessiné avant le premier rendu — une fenêtre qui s'ouvre et se
+       referme en une seconde ne doit pas se remplir sous les yeux. Pas de
+       script en ligne : la CSP d'une page d'extension le refuserait en
+       silence. -->
+  <script src="../commun/000-navigateur.js"></script>
+  <script src="../commun/langue.js"></script>
+  <script src="../commun/catalogue.js"></script>
+  <script src="popup.js"></script>
+</head>
+<body>
+
+<!-- CE QUE CETTE FENÊTRE MONTRE, ET RIEN D'AUTRE.
+     Elle montrait la même chose que le panneau de la boîte à outils — les mêmes
+     modules, les mêmes réglages —, si bien qu'il y avait deux endroits pour
+     faire un seul geste. La séparation : ici on dit si l'extension EXISTE et
+     dans quelle langue elle parle ; dans la partie, on dit ce qu'elle FAIT. -->
+<header class="r20-tete">
+  <span class="r20-titre">VTTinker</span>
+  <label class="r20-bascule tete-bascule">
+    <input type="checkbox" id="actif">
+    <span class="rail"></span>
+  </label>
+</header>
+
+<div class="r20-ligne">
+  <span class="r20-nom" id="mot-langue"></span>
+  <select class="r20-select" id="langue"></select>
+</div>
+
+<div class="r20-ligne">
+  <span class="r20-nom" id="mot-theme"></span>
+  <select class="r20-select" id="theme"></select>
+</div>
+
+<footer class="r20-pied">
+  <span id="version"></span>
+  <span class="r20-pousse"></span>
+  <button type="button" class="r20-bouton" id="site" disabled></button>
+  <button type="button" class="r20-bouton r20-plein" id="soutien" disabled></button>
+</footer>
+
+</body>
+</html>
