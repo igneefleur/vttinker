@@ -131,8 +131,25 @@ function tousLesFichiers(dir, base) {
 tousLesFichiers(RACINE, RACINE).forEach(function (rel) {
   if (rel === "manifest.json") { return; }
   if (rel.endsWith(".svg")) { return; }   // la source de l'icône, gardée exprès
+  /* UN FICHIER CACHÉ N'EST PAS UN ORPHELIN : IL N'EST PAS LIVRÉ.
+   *
+   * « .amo-upload-uuid » est déposé là par web-ext après une signature, et il
+   * rattache les envois suivants à la même fiche chez Mozilla. Il n'a donc rien
+   * à faire au manifeste — et rien à faire dans le paquet non plus.
+   *
+   * L'EXCEPTION NE VAUT QUE PARCE QUE LA FABRICATION L'ÉCARTE POUR DE BON :
+   * outils/paquet.js saute ce qui commence par un point, et RELIT le répertoire
+   * central de chaque archive pour s'en assurer. Les deux contrôles ci-dessous
+   * tiennent cette promesse ; sans eux, cette exception-ci serait un trou. */
+  if (path.basename(rel).charAt(0) === ".") { return; }
   verifie("aucun orphelin : " + rel, nommes.has(rel), "présent dans extension/ mais nommé nulle part");
 });
+
+const fabrique = fs.readFileSync(path.join(RACINE, "..", "outils", "paquet.js"), "utf8");
+verifie("la fabrication écarte les fichiers cachés",
+  /if \(e\.name\.charAt\(0\) === "\."\) \{ return; \}/.test(fabrique));
+verifie("  et relit le contenu de chaque archive qu'elle rend",
+  /function controle\(f\)/.test(fabrique) && /paquet impur/.test(fabrique));
 
 /* ============================================================
  * 2. SYNTAXE
