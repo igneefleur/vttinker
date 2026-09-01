@@ -45,8 +45,15 @@
             VTT.log("jetons hors carte : sans objet sur l'ancien moteur");
             return;
           }
+          /* LE GUET EST DIT, ET CE N'EST PAS UN DÉTAIL. Accroché au rendu, la
+           * correction passe avant chaque image et rien ne clignote ; retombé
+           * sur l'intervalle, elle passe toutes les 500 ms et les jetons hors
+           * page réapparaissent par à-coups. C'est le défaut qu'on a signalé, et
+           * il doit se lire dans la console plutôt que se découvrir en jouant. */
           VTT.log("jetons hors carte :", d.poses, "tampon(s) posé(s) sur", d.tampons,
-                  "— guet toutes les", d.pas, "ms");
+                  d.guet === "rendu"
+                    ? "— corrigés avant chaque image"
+                    : "— REPLI sur une horloge de " + d.pas + " ms : ça clignotera");
         });
       }
 

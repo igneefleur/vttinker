@@ -640,7 +640,30 @@ function faisRoll20(borneSilencieux, peinture) {
     };
   }
 
+  /* L'OBSERVABLE DE RENDU, PARCE QU'UN MODULE S'Y ACCROCHE.
+   *
+   * Le module des jetons hors carte corrige son attribut AVANT CHAQUE IMAGE —
+   * c'est la seule façon de garantir qu'aucune image n'est dessinée avec la
+   * valeur de Roll20, et un guet à intervalle avait produit un clignotement bien
+   * visible. Un faux monde sans observable l'aurait poussé sur son repli, et le
+   * banc aurait éprouvé le chemin qui n'est pas livré.
+   *
+   * `image()` joue une image : c'est par elle que le banc vérifie que la
+   * correction repasse, et qu'elle ne repasse plus une fois le module éteint. */
+  const observateurs = [];
+  const onBeforeRenderObservable = {
+    add(fn) { observateurs.push(fn); return fn; },
+    remove(fn) {
+      const i = observateurs.indexOf(fn);
+      if (i >= 0) { observateurs.splice(i, 1); }
+      return i >= 0;
+    }
+  };
+
   const scene = {
+    onBeforeRenderObservable,
+    image() { observateurs.slice().forEach(function (f) { f(); }); },
+    observateurs,
     meshes: [grille, maillageToken], cameras: [camera],
     materials: [materiauR20], textures: [atlas], transformNodes: [],
     getTransformNodeByName(n) {
@@ -4985,35 +5008,66 @@ function essaiHuitDefauts() {
  * 15. LES JETONS, VISIBLES HORS DE LA CARTE
  * ============================================================
  *
- * Ce module tient à un seul chiffre — le z de `u_Board` — et toute l'enquête qui
- * l'a produit a buté sur la MÊME erreur, cinq fois : écrire ce z sur le maillage
- * SOURCE, qui ne porte que la valeur du modèle, au lieu de l'écrire sur chaque
- * INSTANCE, seule à finir sur la carte graphique. Cinq mesures ont conclu « le
- * levier ne mord pas ».
+ * Ce module tient à un seul chiffre — le w de `u_Board` — et il s'est trompé
+ * DEUX FOIS avant d'être juste. Les deux erreurs ont été signalées en jouant, et
+ * aucune n'était visible d'ici. Ce bloc existe pour qu'aucune ne revienne.
  *
- * Une régression qui reviendrait à n'écrire que sur la source ne se verrait
- * NULLE PART : la fonction rendrait toujours ok, le compte rendu annoncerait
- * toujours des tampons posés, et seul un joueur devant sa page s'apercevrait que
- * rien n'a changé. C'est exactement ce qu'un banc doit attraper, et c'est ce que
- * ce bloc éprouve.
+ * ---------- LA PREMIÈRE : ÉCRIRE SUR LA SOURCE ----------
  *
- * Il éprouve aussi les deux autres promesses : que l'extinction rende à Roll20
- * SA règle (et non zéro, ce qui priverait un MJ de ce qu'il voyait avant), et
- * que le guet repasse quand Roll20 réécrit le tampon dans notre dos — ce qu'il
- * fait, à des occasions qui lui appartiennent.
+ * Cinq mesures ont conclu « le levier ne mord pas » parce qu'elles écrivaient
+ * sur le maillage SOURCE, qui ne porte que la valeur du modèle, au lieu de
+ * chaque INSTANCE, seule à finir sur la carte graphique. Une régression qui y
+ * reviendrait ne se verrait NULLE PART : la fonction rendrait ok, le compte
+ * rendu annoncerait des tampons posés, et seul un joueur devant sa page
+ * s'apercevrait que rien n'a changé.
+ *
+ * ---------- LA SECONDE : LE MAUVAIS COMPOSANT ----------
+ *
+ * `z = 1` saute le rejet mais laisse `offBoard` vrai, donc la ligne
+ * `glFragColor.a *= 0.5` s'applique : le jeton revient À DEMI-OPACITÉ, comme
+ * voilé. C'est ce qui a été livré, et signalé. `w = 0` saute le test entier :
+ * ni rejet, ni demi-teinte. C'est aussi, exactement, ce que le MJ reçoit.
+ *
+ * Le banc éprouve donc quel composant est touché, et lequel ne l'est pas.
+ *
+ * ---------- ET LE CLIGNOTEMENT ----------
+ *
+ * La correction passait toutes les 500 ms. Entre la réécriture de Roll20 et
+ * notre passage, des images étaient dessinées avec sa valeur : ça clignotait.
+ * Elle passe désormais AVANT CHAQUE IMAGE. Un banc qui ne jouerait pas d'image
+ * ne verrait pas la différence entre les deux, et c'est justement la différence
+ * qu'on est venu signaler.
  */
-function faisTampon(z) {
-  return { x: 1750, y: 1750, z: z, w: 1 };
+function faisTampon(w) {
+  return { x: 1750, y: 1750, z: 0, w: w };
 }
 
 /* Un maillage source et ses instances, comme Roll20 les range : les instances
  * portent CHACUNE leur tampon, et c'est là que tout se joue. */
-function faisJetons(z) {
-  const source = { name: "instance-0-objects - 0_group_0", instancedBuffers: { u_Board: faisTampon(0) } };
+/* LES COUCHES, PARCE QUE LE MODULE LES REGARDE MAINTENANT.
+ *
+ * Il ne pose plus w = 0 partout : seulement sous « tokens-layer ». Un faux
+ * monde sans couches lui ferait tout accepter, et le banc ne verrait pas la
+ * régression qui remettrait la carte dans le lot — celle-là même qui a changé
+ * dix-huit mille pixels sur l écran d un MJ.
+ *
+ * La chaîne rejoue celle qu on a relevée dans une vraie partie :
+ *   instance  <  image-instance--<id>  <  -<id>  <  tokens-layer
+ */
+function faisCouche(nom) { return { name: nom, parent: null }; }
+
+function faisJetons(w, couche) {
+  const racine = faisCouche(couche || "tokens-layer");
+  const source = { name: "instance-0-objects - 0_group_0", parent: racine,
+                   instancedBuffers: { u_Board: faisTampon(w) } };
   source.instances = [1, 2, 3].map(function (i) {
+    const jeton = { name: "-jeton" + i, parent: racine };
+    const image = { name: "image-instance--jeton" + i, parent: jeton };
     return { name: "instance- /images/character" + i + ".png",
-             sourceMesh: source, instancedBuffers: { u_Board: faisTampon(z) } };
+             parent: image, sourceMesh: source,
+             instancedBuffers: { u_Board: faisTampon(w) } };
   });
+  source.racine = racine;
   return source;
 }
 
@@ -5043,66 +5097,116 @@ async function essaiHorsPage() {
   /* ---------- CE QU'IL FAIT, DANS UN MONDE QUI RESSEMBLE AU VRAI ---------- */
   const bus = faisBus();
   const r20 = faisRoll20(false);
-  const jetons = faisJetons(0);
+  const jetons = faisJetons(1);
   r20.scene.meshes.push(jetons);
-  r20.scene.metadata = { gmMode: false };
   montePont(bus, r20);
 
   let rep = null;
   bus.ecoute(null, (ev) => { if (ev.data && ev.data.type === "horspage-resultat") { rep = ev.data; } });
 
-  function zDesInstances() { return jetons.instances.map(function (i) { return i.instancedBuffers.u_Board.z; }); }
+  const tampons = function () {
+    return [jetons.instancedBuffers.u_Board].concat(
+      jetons.instances.map(function (i) { return i.instancedBuffers.u_Board; }));
+  };
+  const wDesInstances = function () {
+    return jetons.instances.map(function (i) { return i.instancedBuffers.u_Board.w; });
+  };
 
   bus.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: true });
   await attends(60);
   verifie("le pont accepte la pose", !!rep && rep.ok === true, JSON.stringify(rep));
   egal("  il compte les quatre tampons (une source et trois instances)", rep && rep.tampons, 4);
 
-  /* LA MESURE QUI COMPTE. */
+  /* LA PREMIÈRE MESURE : CHAQUE INSTANCE, PAS LA SEULE SOURCE. */
   egal("  et il écrit sur CHAQUE INSTANCE, pas seulement sur la source",
-    JSON.stringify(zDesInstances()), JSON.stringify([1, 1, 1]));
-  egal("  la source aussi, pour les instances à venir", jetons.instancedBuffers.u_Board.z, 1);
+    JSON.stringify(wDesInstances()), JSON.stringify([0, 0, 0]));
+  egal("  la source aussi, pour les instances à venir", jetons.instancedBuffers.u_Board.w, 0);
 
-  /* w NE BOUGE PAS. C'est lui qui commande si le test hors page a lieu ; le
-   * mettre à zéro éteindrait le test entier au lieu d'en corriger une branche,
-   * et supprimerait la demi-opacité que Roll20 applique hors page. */
-  egal("  et il ne touche pas à w", jetons.instances[0].instancedBuffers.u_Board.w, 1);
+  /* LA SECONDE : C'EST w QU'ON POSE, ET z QU'ON LAISSE.
+   *
+   * Toucher z rendrait le jeton à demi-opacité — le défaut signalé. Le banc le
+   * dit dans les deux sens, sans quoi une inversion des deux composants
+   * passerait : les deux valeurs seraient « changées », et les deux contrôles
+   * d'une seule d'entre elles seraient satisfaits. */
+  egal("  z reste celui de Roll20 : sinon le jeton revient à demi-opacité",
+    JSON.stringify(jetons.instances.map(function (i) { return i.instancedBuffers.u_Board.z; })),
+    JSON.stringify([0, 0, 0]));
 
-  /* ---------- LE GUET REPASSE ---------- */
-  jetons.instances[1].instancedBuffers.u_Board = faisTampon(0);
-  await attends(700);
-  egal("Roll20 réécrit un tampon : le guet le repose",
-    JSON.stringify(zDesInstances()), JSON.stringify([1, 1, 1]));
+  /* ET LE GUET EST CELUI DU RENDU, PAS UN INTERVALLE. */
+  egal("  le guet est accroché au rendu, pas à une horloge", rep && rep.guet, "rendu");
+  egal("  un seul observateur de rendu posé", r20.scene.observateurs.length, 1);
 
-  /* ---------- L'EXTINCTION REND SA RÈGLE À ROLL20 ---------- */
+  /* ---------- LA CORRECTION PASSE AVANT CHAQUE IMAGE ----------
+   *
+   * On rejoue ce que fait Roll20 : il REMPLACE le vecteur par un neuf. Le module
+   * doit avoir corrigé le remplaçant avant que l'image suivante soit dessinée —
+   * pas 500 ms plus tard, sinon ça clignote. */
+  jetons.instances[1].instancedBuffers.u_Board = faisTampon(1);
+  egal("Roll20 réécrit un tampon : il est fautif tant qu'aucune image n'est jouée",
+    wDesInstances()[1], 1);
+  r20.scene.image();
+  egal("  et corrigé DÈS l'image suivante, sans attendre d'horloge",
+    JSON.stringify(wDesInstances()), JSON.stringify([0, 0, 0]));
+
+  /* ---------- ET LA CARTE, ELLE, N'Y TOUCHE PAS ----------
+   *
+   * C'est le défaut qui a été livré et signalé : w = 0 posé partout éteignait
+   * aussi la demi-teinte que Roll20 applique hors page aux images de CARTE.
+   * Dix-huit mille pixels changeaient sur l'écran d'un MJ sans qu'un seul jeton
+   * n'ait bougé. Le module ne touche plus que « tokens-layer ». */
+  const carte = faisJetons(1, "map-layer");
+  r20.scene.meshes.push(carte);
+  bus.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: true });
+  await attends(60);
+  r20.scene.image();
+  egal("la couche CARTE n'est pas touchée",
+    JSON.stringify(carte.instances.map(function (i) { return i.instancedBuffers.u_Board.w; })),
+    JSON.stringify([1, 1, 1]));
+  egal("  et les jetons le sont toujours",
+    JSON.stringify(wDesInstances()), JSON.stringify([0, 0, 0]));
+  /* Et rien n'est retenu pour elle : à l'extinction, il n'y aura rien à rendre
+   * — donc rien à rendre DE TRAVERS. */
+  verifie("  rien n'est retenu pour la carte",
+    carte.instances.every(function (i) { return i.instancedBuffers.u_Board.vttkW === undefined; }));
+
+  /* ---------- L'EXTINCTION REND SA VALEUR À ROLL20 ----------
+   *
+   * PAS « 1 » : Roll20 calcule ce w selon la couche, et le MJ en reçoit déjà
+   * zéro sur la sienne. Lui rendre 1 lui prendrait ce qu'il voyait avant. */
   rep = null;
   bus.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: false });
   await attends(60);
   verifie("le pont accepte l'extinction", !!rep && rep.ok === true, JSON.stringify(rep));
   egal("  et le joueur retrouve exactement ce que Roll20 lui donnait",
-    JSON.stringify(zDesInstances()), JSON.stringify([0, 0, 0]));
+    JSON.stringify(wDesInstances()), JSON.stringify([1, 1, 1]));
+  egal("  l'observateur de rendu est retiré", r20.scene.observateurs.length, 0);
 
-  /* ET LE GUET S'ARRÊTE POUR DE BON : un intervalle qui survit à l'extinction
-   * reposerait le levier une demi-seconde plus tard, et le module serait
-   * ineffaçable. */
-  jetons.instances[0].instancedBuffers.u_Board.z = 0;
-  await attends(700);
-  egal("  le guet est bien arrêté", zDesInstances()[0], 0);
+  /* ET IL NE REPASSE PLUS. Un observateur qui survit à l'extinction reposerait
+   * le levier à l'image suivante, et le module serait ineffaçable. */
+  r20.scene.image();
+  egal("  jouer une image ne le repose pas", JSON.stringify(wDesInstances()), JSON.stringify([1, 1, 1]));
 
-  /* ---------- CHEZ LE MJ, ÉTEINDRE NE LUI PREND RIEN ---------- */
+  /* Et la marque de rangement part avec : la laisser ferait rendre, au prochain
+   * cycle, une valeur relevée deux allumages plus tôt. */
+  verifie("  et la valeur retenue est libérée",
+    tampons().every(function (b) { return b.vttkW === undefined; }));
+
+  /* ---------- CHEZ LE MJ, ÉTEINDRE NE LUI PREND RIEN ----------
+   *
+   * Sur sa couche, Roll20 lui donne DÉJÀ w = 0. Le module n'a rien à poser, donc
+   * rien à rendre, et l'extinction doit le laisser exactement comme il était. */
   const bus2 = faisBus();
   const r20b = faisRoll20(false);
-  const mj = faisJetons(1);
+  const mj = faisJetons(0);
   r20b.scene.meshes.push(mj);
-  r20b.scene.metadata = { gmMode: true };
   montePont(bus2, r20b);
   bus2.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: true });
   await attends(60);
   bus2.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: false });
   await attends(60);
-  egal("le MJ éteint le module et garde son drapeau",
-    JSON.stringify(mj.instances.map(function (i) { return i.instancedBuffers.u_Board.z; })),
-    JSON.stringify([1, 1, 1]));
+  egal("le MJ éteint le module et garde son w",
+    JSON.stringify(mj.instances.map(function (i) { return i.instancedBuffers.u_Board.w; })),
+    JSON.stringify([0, 0, 0]));
 
   /* ---------- SANS SCÈNE, IL LE DIT AU LIEU DE SE CROIRE POSÉ ----------
    *
@@ -5111,8 +5215,6 @@ async function essaiHorsPage() {
    * allumé sans effet — c'est la panne qu'avait eue la grille, mot pour mot. */
   const bus3 = faisBus();
   const r20c = faisRoll20(false);
-  /* La scène EXISTE — c'est elle qui décide du moteur — mais elle n'a pas encore
-   * ses maillages. C'est l'état réel des premières secondes d'une partie. */
   r20c.scene.meshes = null;
   montePont(bus3, r20c);
   let rep3 = null;

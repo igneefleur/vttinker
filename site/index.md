@@ -4,7 +4,7 @@ hide:
 ---
 
 <div class="vttk-banniere" markdown>
-<span class="vttk-version">version 0.52.0</span>
+<span class="vttk-version">version 0.53.0</span>
 
 # VTTinker
 

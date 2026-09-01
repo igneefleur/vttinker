@@ -2913,13 +2913,13 @@
    * ---------- LE NUANCEUR, LU DANS LE PROGRAMME COMPILÉ ----------
    *
    * Chaque image de jeton est une instance d'un même maillage, et porte un
-   * attribut d'instance `u_Board`. Le sommet le découpe :
+   * attribut d'instance `u_Board`. Le sommet le découpe en deux :
    *
    *     in  vec4  u_Board;
    *     out vec3  v_Board;      v_Board    = u_Board.xyz;
    *     out float v_Offboard;   v_Offboard = u_Board.w;
    *
-   * et le fragment s'en sert exactement deux fois :
+   * et le fragment s'en sert exactement ici :
    *
    *     if (v_Offboard == 1.) {
    *       offBoard = vPositionW.x < 0. || vPositionW.x > v_Board.x
@@ -2933,43 +2933,58 @@
    *     ...
    *     if (offBoard && v_GridAlign != 1.0) { glFragColor.a *= 0.5; }
    *
-   * Roll20 remplit ce vecteur ainsi :
+   * Roll20 remplit le vecteur ainsi :
    *
-   *     u_Board = new Vector4(largeur, hauteur, gmMode ? 1 : 0, ...)
+   *     u_Board = new Vector4(largeur, hauteur, gmMode ? 1 : 0, <selon la couche>)
    *
-   * Le z est donc le drapeau « je suis le MJ », et le joueur reçoit z = 0. Tout
-   * ce qui déborde de la page est jeté avant même d'être texturé — le
-   * commentaire de Roll20 présente d'ailleurs la chose comme une économie.
+   * ---------- LE LEVIER EST w, ET PAS z ----------
    *
-   * ---------- CE QUE FAIT CE MODULE, ET RIEN DE PLUS ----------
+   * Il y a deux façons d'échapper au rejet, et elles ne rendent PAS la même
+   * image. Ce module a d'abord employé la mauvaise.
    *
-   * Il pose z = 1 sur les attributs d'instance. Le fragment n'est plus jeté, et
-   * la ligne suivante s'applique : hors page, Roll20 dessine à DEMI-OPACITÉ.
-   * C'est sa propre mécanique, et elle est bienvenue — le jeton se voit, et l'on
-   * sait au premier regard qu'il est dehors.
+   *   z = 1  — le rejet est sauté, mais `offBoard` reste VRAI, et la dernière
+   *            ligne s'applique : le jeton est peint à DEMI-OPACITÉ. On dirait
+   *            qu'un voile le recouvre. C'est ce qui a été livré en 0.52.0, et
+   *            c'est ce qu'on est venu signaler.
    *
-   * IL NE TOUCHE PAS À w. C'est w qui commande si le test a lieu ; le MJ, lui, a
-   * w = 0 et voit à pleine opacité. Le mettre à zéro marcherait aussi, mais ce
-   * serait éteindre le test entier pour n'en corriger qu'une branche.
+   *   w = 0  — `v_Offboard` ne vaut plus 1, tout le bloc est sauté, `offBoard`
+   *            reste FAUX : ni rejet, ni demi-teinte. Le jeton est peint comme
+   *            n'importe quel autre.
+   *
+   * C'EST LA CONFIGURATION DU MJ. Relevé sur une partie où l'on est MJ :
+   * u_Board = [1540, 2202.59, 1, 0] — son w vaut zéro, et c'est pour ça qu'il
+   * voit ses jetons hors page à pleine opacité. Le module donne donc au joueur
+   * exactement ce que Roll20 donne déjà au MJ, ni plus ni moins.
    *
    * ---------- CE QU'IL NE RÉVÈLE PAS ----------
    *
-   * z ne paraît qu'à cette ligne-là dans tout le programme — vérifié sur la
-   * source compilée, pas sur une lecture du paquet minifié. Il ne commande
-   * aucune couche, aucune visibilité, aucun brouillard. Mesuré par ailleurs :
-   * levier posé, tant que rien ne déborde de la page, l'écran ne change pas d'un
-   * pixel (0 sur 0 de bruit de fond, dans les deux parties d'essai).
+   * `v_Offboard` ne paraît qu'à cette ligne-là dans tout le programme — vérifié
+   * sur la source compilée, pas sur une lecture du paquet minifié. Il ne commande
+   * aucune couche, aucune visibilité, aucun brouillard : il dit seulement s'il
+   * faut TESTER le débordement. Mesuré par ailleurs : levier posé, tant que rien
+   * ne déborde de la page, l'écran ne change pas d'un pixel.
    *
    * Autrement dit, il montre au joueur SES propres jetons là où il les a mis. Il
    * ne lui donne rien que le serveur ne lui ait déjà envoyé.
    *
-   * ---------- POURQUOI UN GUET, ET PAS UNE POSE ----------
+   * ---------- ON CORRIGE AVANT CHAQUE IMAGE, ET PAS TOUTES LES DEMI-SECONDES ----------
    *
    * Roll20 réécrit `u_Board` par un `new Vector4(...)`, à des occasions qui lui
-   * appartiennent — changement de page, de couche, arrivée d'un jeton. Poser une
-   * fois ne tient donc pas. On repasse, et l'on ne repasse que ce qui est
-   * retombé à zéro : le parcours est celui des maillages de la scène, quelques
-   * dizaines, une fois par demi-seconde.
+   * appartiennent. La première version repassait toutes les 500 ms — et ça se
+   * VOYAIT : entre la réécriture de Roll20 et notre passage suivant, les jetons
+   * hors page disparaissaient puis revenaient. Un clignotement, signalé comme
+   * tel, et qui était le comportement exact de ce guet.
+   *
+   * Un intervalle ne peut pas faire mieux : quelle que soit sa période, il y a
+   * toujours une fenêtre où l'état est celui de Roll20 et où une image est
+   * dessinée. On se place donc sur `onBeforeRenderObservable`, qui passe AVANT
+   * chaque image : il n'existe plus d'image dessinée avec la mauvaise valeur.
+   *
+   * Le coût est celui d'un parcours des maillages de la scène — quelques
+   * dizaines de lectures de propriété, sans allocation, et rien à écrire quand
+   * rien n'a bougé. L'intervalle reste en repli pour une scène qui n'exposerait
+   * pas l'observable, et le compte rendu DIT lequel des deux tient le guet :
+   * un repli silencieux ramènerait le clignotement sans prévenir.
    *
    * ---------- L'ANCIEN MOTEUR N'EN A PAS BESOIN ----------
    *
@@ -2979,61 +2994,187 @@
 
   var HP_PAS = 500;
   var hpGuet = null;
+  var hpObs = null;
+  var hpScene = null;
   var hpPose = false;
 
-  /* Le parcours, et il rend ce qu'il a trouvé pour que le compte rendu ne soit
-   * pas une supposition. `instances` est la liste des instances matérielles d'un
-   * maillage ; chacune porte SON tampon, et c'est là que tout se joue — écrire
-   * sur le seul maillage source ne pose que la valeur du modèle. */
-  function hpApplique(z) {
-    var S = window.MeshScene;
-    if (!S || !S.meshes) { return { ok: false, raison: "scene-absente" }; }
-    var vus = 0, poses = 0;
-    function pose(m) {
-      var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;
-      if (!b) { return; }
-      vus++;
-      if (b.z === z) { return; }
-      b.z = z;
-      poses++;
-    }
-    S.meshes.forEach(function (m) {
-      pose(m);
-      var l = m.instances;
-      if (!l) { return; }
-      for (var i = 0; i < l.length; i++) { pose(l[i]); }
-    });
-    return { ok: true, tampons: vus, poses: poses };
+  /* SON w D'ORIGINE EST GARDÉ SUR LE VECTEUR LUI-MÊME.
+   *
+   * À l'extinction, il ne suffit pas de remettre « 1 » : Roll20 calcule ce w
+   * selon la couche, et le MJ en reçoit déjà zéro sur la sienne. Lui rendre 1
+   * lui ferait perdre ce qu'il voyait avant qu'on allume. On garde donc la
+   * valeur trouvée, à côté d'elle, et on la rend telle quelle.
+   *
+   * Le rangement tient sur le vecteur parce que Roll20 le REMPLACE au lieu de le
+   * modifier : un vecteur neuf arrive sans notre marque, on relève son w, et
+   * l'ancien part avec celui qu'il remplaçait. */
+  function hpPrend(m) {
+    var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;
+    if (!b) { return null; }
+    return b;
   }
 
-  /* CE QUE ROLL20 AURAIT MIS. À l'extinction on ne remet pas « zéro » : on remet
-   * SA règle, lue sur la scène. Un MJ qui éteint le module ne doit pas y perdre
-   * ce qu'il voyait avant de l'allumer. */
-  function hpSonZ() {
+  function hpParcourt(fn) {
     var S = window.MeshScene;
-    try { return (S && S.metadata && S.metadata.gmMode) ? 1 : 0; } catch (e) { return 0; }
+    if (!S || !S.meshes) { return null; }
+    var l = S.meshes, i, j, ins, b, vus = 0, touches = 0;
+    for (i = 0; i < l.length; i++) {
+      b = hpPrend(l[i]);
+      if (b) { vus++; if (fn(b, l[i])) { touches++; } }
+      ins = l[i].instances;
+      if (!ins) { continue; }
+      for (j = 0; j < ins.length; j++) {
+        b = hpPrend(ins[j]);
+        if (b) { vus++; if (fn(b, ins[j])) { touches++; } }
+      }
+    }
+    return { tampons: vus, poses: touches };
+  }
+
+  /* ---------- ET SEULEMENT SUR LA COUCHE DES JETONS ----------
+   *
+   * Poser w = 0 PARTOUT est trop large, et ça s'est vu. Mesuré sur une partie où
+   * l'on est MJ : dix-huit mille pixels changeaient sans qu'aucun jeton n'ait
+   * bougé, pour zéro de bruit. La cause est la dernière ligne du fragment —
+   *
+   *     if (offBoard && v_GridAlign != 1.0) { glFragColor.a *= 0.5; }
+   *
+   * — et une image de CARTE qui déborde de la page. Roll20 en peint la partie
+   * hors page à demi-teinte, exprès ; w = 0 éteignait cette demi-teinte aussi.
+   *
+   * ON RELÈVE DONC SA RÈGLE AU LIEU DE L'ÉCRASER, et elle est lisible : chez le
+   * MJ, où elle est la seule à décider, la chaîne des parents la donne.
+   *
+   *     w=0  instance-0-objects - 0_group_1    <  tokens-layer
+   *     w=0  instance- …/images/495723424…     <  image-instance--Oyj32…  <  -Oyj32…  <  tokens-layer
+   *     w=1  instance- …/images/495721977…     <  image-instance--Oyj07…  <  -Oyj07…  <  map-layer
+   *
+   * Tout ce qui pend de « tokens-layer » reçoit zéro ; l'instance dessinée sous
+   * « map-layer » garde un. Trente-sept tampons relevés, sans une exception.
+   *
+   * Et côté joueur, les sept tampons de la page d'essai pendent tous de
+   * « tokens-layer », les six instances dessinées portant w = 1 — c'est bien
+   * pour ça qu'elles disparaissent.
+   *
+   * Le module ne touche donc QUE cette couche. Ce qui vient d'ailleurs — la
+   * carte, et tout ce que Roll20 rangerait ailleurs demain — garde exactement ce
+   * que Roll20 lui a donné. */
+  var HP_COUCHE = "tokens-layer";
+
+  /* La racine de la chaîne, et pas le parent immédiat : entre un maillage et sa
+   * couche il y a le nœud de l'image et celui du jeton. Huit sauts est un garde-
+   * fou contre un cycle, pas une limite qu'on approche — les chaînes relevées en
+   * font trois ou quatre. */
+  function hpSurLaCoucheDesJetons(m) {
+    var n = m, k = 0;
+    while (n.parent && k < 8) { n = n.parent; k++; }
+    return String(n.name || "") === HP_COUCHE;
+  }
+
+  /* UN TAMPON, ET LA DÉCISION LE CONCERNANT. Sortir tôt est le cas courant :
+   * la plupart des maillages n'ont pas de tampon, et ceux qu'on a déjà corrigés
+   * valent déjà zéro. La chaîne des parents n'est remontée que pour ce qui reste. */
+  function hpUn(m) {
+    var b = m.instancedBuffers && m.instancedBuffers.u_Board;
+    if (!b || b.w === 0) { return false; }
+    if (!hpSurLaCoucheDesJetons(m)) { return false; }
+    if (b.vttkW === undefined) { b.vttkW = b.w; }
+    b.w = 0;
+    return true;
+  }
+
+  /* LE GESTE APPELÉ À CHAQUE IMAGE.
+   *
+   * Il l'a d'abord été par hpParcourt, avec une fonction passée en argument. Le
+   * commentaire disait « aucune allocation, aucune fermeture créée » — et c'était
+   * FAUX : `hpCorrige` créait une fermeture neuve à chaque appel et `hpParcourt`
+   * allouait son objet de retour. Chronométré sur vingt mille passages, dans une
+   * partie réelle : 21,50 µs contre 17,95 pour cette écriture-ci.
+   *
+   * Elle ne construit rien et ne rend rien — à chaque image, personne ne lit le
+   * compte. hpParcourt reste pour la pose et la restitution, où les chiffres
+   * servent au compte rendu et où l'on passe deux fois dans la vie du module.
+   *
+   * Le prix se lit dans outils/releves/cout-horspage-joueur.json, et la sonde qui
+   * l'établit est `node outils/pilote.js couthp`. */
+  function hpCorrige() {
+    var S = window.MeshScene;
+    if (!S || !S.meshes) { return; }
+    var l = S.meshes, i, j, ins, m;
+    for (i = 0; i < l.length; i++) {
+      m = l[i];
+      hpUn(m);
+      ins = m.instances;
+      if (!ins) { continue; }
+      for (j = 0; j < ins.length; j++) { hpUn(ins[j]); }
+    }
+  }
+
+  /* LA MÊME CHOSE, MAIS QUI COMPTE. Elle ne sert qu'à la pose : le compte rendu
+   * dit combien de tampons ont été trouvés et combien ont été touchés, et ces
+   * deux chiffres sont ce qui distingue « posé » de « posé sur rien ». */
+  function hpCorrigeEtCompte() {
+    return hpParcourt(function (b, m) { return hpUn(m); });
+  }
+
+  function hpRendSonW() {
+    return hpParcourt(function (b) {
+      if (b.vttkW === undefined) { return false; }
+      b.w = b.vttkW;
+      b.vttkW = undefined;
+      return true;
+    });
   }
 
   function hpInstalle() {
     if (surLancienMoteur()) {
       return { ok: true, sansObjet: true, moteur: "heritage" };
     }
-    var r = hpApplique(1);
-    if (!r.ok) { return r; }
+    var r = hpCorrigeEtCompte();
+    if (!r) { return { ok: false, raison: "scene-absente" }; }
     hpPose = true;
-    if (hpGuet) { clearInterval(hpGuet); }
-    hpGuet = setInterval(function () {
-      try { if (hpPose) { hpApplique(1); } } catch (e) {}
-    }, HP_PAS);
-    return { ok: true, tampons: r.tampons, poses: r.poses, pas: HP_PAS };
+    hpArreteGuet();
+
+    /* AVANT CHAQUE IMAGE. C'est la seule place d'où l'on peut promettre qu'aucune
+     * image ne sera dessinée avec la valeur de Roll20. */
+    var S = window.MeshScene;
+    var guet = "aucun";
+    if (S.onBeforeRenderObservable && S.onBeforeRenderObservable.add) {
+      hpScene = S;
+      hpObs = S.onBeforeRenderObservable.add(function () {
+        if (!hpPose) { return; }
+        try { hpCorrige(); } catch (e) {}
+      });
+      guet = "rendu";
+    } else {
+      /* REPLI, ET IL EST DIT. Une scène sans observable n'existe pas dans le
+       * Roll20 d'aujourd'hui ; si elle apparaît, le module continue de marcher
+       * mais le clignotement revient, et il vaut mieux le lire dans la console
+       * que le découvrir en jouant. */
+      hpGuet = setInterval(function () {
+        if (!hpPose) { return; }
+        try { hpCorrige(); } catch (e) {}
+      }, HP_PAS);
+      guet = "intervalle";
+    }
+    return { ok: true, tampons: r.tampons, poses: r.poses, guet: guet, pas: HP_PAS };
+  }
+
+  function hpArreteGuet() {
+    if (hpGuet) { clearInterval(hpGuet); hpGuet = null; }
+    if (hpObs && hpScene && hpScene.onBeforeRenderObservable) {
+      try { hpScene.onBeforeRenderObservable.remove(hpObs); } catch (e) {}
+    }
+    hpObs = null;
+    hpScene = null;
   }
 
   function hpRetire() {
-    if (hpGuet) { clearInterval(hpGuet); hpGuet = null; }
+    hpArreteGuet();
     if (!hpPose) { return { ok: true, rendu: 0 }; }
     hpPose = false;
-    var r = hpApplique(hpSonZ());
-    return { ok: true, rendu: r.ok ? r.poses : 0, tampons: r.tampons || 0 };
+    var r = hpRendSonW();
+    return { ok: true, rendu: r ? r.poses : 0, tampons: r ? r.tampons : 0 };
   }
 
   /* ============================================================

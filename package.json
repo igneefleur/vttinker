@@ -1,6 +1,6 @@
 {
   "name": "vttinker",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "private": true,
   "description": "Outillage de developpement de l extension VTTinker. Ne fait PAS partie du paquet livre. Le numero de version suit celui du manifeste, qui fait foi.",
   "scripts": {

@@ -44,13 +44,18 @@ Move a token past the edge of the page and, as a player, you stop seeing it. The
 GM still does. This is in Roll20's shader: fragments outside the page are
 discarded unless the GM flag is set.
 
-This module sets that flag. The token comes back, drawn at half opacity — that
-is Roll20's own treatment of anything off the page, and it tells you at a glance
-that the token is outside.
+This module skips that test on the token layer, which is exactly what the GM's
+own client does. The token is drawn like any other, at full opacity. Map images
+that run past the page edge keep the half-tone Roll20 gives them, on the token
+layer and nowhere else.
 
-The flag is read in exactly one place in the shader, the edge test. It reveals
-nothing else, and nothing the server has not already sent to your client. For a
-GM the module does nothing at all.
+The correction runs before every frame. Roll20 rewrites the value when a token
+is resized, given a status marker, or moved between layers, and waiting on a
+timer would show those moments as a blink.
+
+The value is read in exactly one place in the shader, to decide whether to run
+the edge test at all. It reveals nothing else, and nothing the server has not
+already sent to your client. For a GM the module does nothing.
 
 Jumpgate only. The legacy renderer has no shader and never hid these tokens.
 </div>

@@ -8983,15 +8983,15 @@ async function epreuveHorsPage() {
         "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
       await dors(2800);
     }
-    async function zLus() {
+    async function wLus() {
       return await driver.executeScript([
         "var S = window.MeshScene, out = [];",
         "S.meshes.forEach(function (m) {",
         "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
-        "  if (b) { out.push(b.z); }",
+        "  if (b) { out.push(b.w); }",
         "  (m.instances || []).forEach(function (i) {",
         "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
-        "    if (c) { out.push(c.z); }",
+        "    if (c) { out.push(c.w); }",
         "  });",
         "});",
         "return out;"
@@ -9032,8 +9032,8 @@ async function epreuveHorsPage() {
     console.log("  dézoom : " + dez);
     await dors(3000);
 
-    const z0 = await zLus();
-    console.log("  z lus, module allumé : " + JSON.stringify(z0));
+    const z0 = await wLus();
+    console.log("  w lus, module allumé : " + JSON.stringify(z0));
 
     const LOIN = 99999, HAUT = -280;
     await bouge(cible.i, LOIN, LOIN);
@@ -9052,12 +9052,12 @@ async function epreuveHorsPage() {
 
     /* ---------- ET L'EXTINCTION ---------- */
     await interrupteur(false);
-    const z1 = await zLus();
+    const z1 = await wLus();
     const eteint = await differe(loin, await driver.takeScreenshot());
     const partE = Math.round(eteint.pixels / etalon.pixels * 100);
     console.log("  hors page, module ÉTEINT    " + String(eteint.pixels).padStart(6) +
       " pixels   " + partE + " %   boîte " + JSON.stringify(eteint.boite));
-    console.log("  z lus, module éteint : " + JSON.stringify(z1));
+    console.log("  w lus, module éteint : " + JSON.stringify(z1));
 
     /* ---------- ET LE RALLUMAGE ---------- */
     await interrupteur(true);
@@ -9087,6 +9087,1269 @@ async function epreuveHorsPage() {
     await dors(600);
     await driver.quit().catch(() => {});
   }
+}
+
+/* ---------- LE VOILE : COMBIEN D'OPACITÉ, AU JUSTE ? ----------
+ *
+ * Signalé : hors page, les jetons sont transparents, « comme si quelque chose
+ * était par-dessus ». Ce n'est pas quelque chose par-dessus, c'est la dernière
+ * ligne du nuanceur :
+ *
+ *     if (offBoard && v_GridAlign != 1.0) { glFragColor.a *= 0.5; }
+ *
+ * Deux façons d'échapper au rejet, et elles ne rendent pas la même image :
+ *
+ *     z = 1  → le rejet est sauté, offBoard reste VRAI, l'alpha est divisé par
+ *              deux. C'est ce qui a été livré.
+ *     w = 0  → le bloc entier est sauté, offBoard reste FAUX : pleine opacité.
+ *              C'est ce que Roll20 donne au MJ.
+ *
+ * COMPTER DES PIXELS NE SUFFIT PAS ICI. Un jeton à demi-opacité couvre exactement
+ * la même surface qu'un jeton opaque : la sonde « combien » aurait dit 106 % dans
+ * les deux cas, et elle l'a dit. Ce qui distingue les deux, c'est l'AMPLEUR de
+ * l'écart au fond, pixel par pixel : à l'opacité a, la couleur vaut
+ * a·jeton + (1-a)·fond, donc l'écart moyen au fond est proportionnel à a.
+ *
+ * On mesure donc cet écart moyen, dans les trois états, sur la MÊME boîte.
+ * Le rapport w0 / z1 doit valoir deux.
+ */
+async function leVoile() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    /* L'ÉCART MOYEN, ET PAS SEULEMENT LE NOMBRE DE PIXELS QUI DIFFÈRENT. C'est
+     * toute la mesure : deux images peuvent différer sur la même surface avec
+     * une amplitude du simple au double. */
+    async function ecart(aB64, bB64) {
+      return await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        /* LE TOTAL, ET PAS LA MOYENNE.
+         *
+         * À l'opacité a, chaque pixel du jeton vaut a·jeton + (1-a)·fond : son
+         * écart au fond est proportionnel à a, et la SOMME des écarts l'est
+         * aussi. La MOYENNE, elle, ne l'est pas — elle se calcule sur les seuls
+         * pixels retenus, et à demi-opacité les pixels de bord passent sous le
+         * seuil et sortent du calcul, ce qui remonte la moyenne des survivants.
+         * Mesuré : moyenne 292 contre 409, soit 1,40 ; totaux 102 200 contre
+         * 196 320, soit 1,92. C'est le second chiffre qui dit l'alpha.
+         *
+         * Le seuil descend donc à 8, juste de quoi écarter le bruit de
+         * compression, et l'on garde les deux : la somme pour l'opacité, la
+         * moyenne pour la lecture. */
+        "  var cnt = 0, somme = 0, pic = 0;",
+        "  var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    var d = Math.abs(a[i] - b[i]) + Math.abs(a[i+1] - b[i+1]) + Math.abs(a[i+2] - b[i+2]);",
+        "    if (d < 8) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++; somme += d; if (d > pic) { pic = d; }",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  cb({ pixels: cnt, total: somme, moyen: cnt ? Math.round(somme / cnt) : 0, pic: pic,",
+        "       boite: cnt ? [x0, y0, x1 - x0 + 1, y1 - y0 + 1] : null });",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = function () { cb({ erreur: 'A' }); };",
+        "B.onerror = function () { cb({ erreur: 'B' }); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), aB64, bB64);
+    }
+    async function bouge(i, g, h) {
+      await driver.executeScript(
+        "var m = window.Campaign.activePage().thegraphics.models;" +
+        "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
+      await dors(2800);
+    }
+    /* On force un état donné du tampon, en écrasant ce que le module a posé.
+     * `garde` empêche le module de le recorriger : on retire son observateur le
+     * temps de la mesure, puis on le laisse reprendre. */
+    async function force(z, w) {
+      return await driver.executeScript([
+        "var Z = arguments[0], W = arguments[1];",
+        "var S = window.MeshScene, n = 0;",
+        "function pose(m) {",
+        "  var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+        "  if (!b) { return; }",
+        "  if (Z !== null) { b.z = Z; }",
+        "  if (W !== null) { b.w = W; }",
+        "  n++;",
+        "}",
+        "S.meshes.forEach(function (m) {",
+        "  pose(m);",
+        "  (m.instances || []).forEach(pose);",
+        "});",
+        "return n;"
+      ].join("\n"), z, w);
+    }
+    async function moduleActif(actif) {
+      await driver.executeScript(
+        "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+        " type: 'horspage', actif: arguments[0] }, location.origin);", actif);
+      await dors(2000);
+    }
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top') };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")");
+
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("  dézoom : " + dez);
+    await dors(3000);
+
+    const LOIN = 99999, HAUT = -280;
+    await bouge(cible.i, LOIN, LOIN);
+    const loin = await driver.takeScreenshot();
+
+    /* L'ÉTALON : le jeton chez lui, à pleine opacité par construction. */
+    await bouge(cible.i, cible.x, cible.y);
+    const etalon = await ecart(loin, await driver.takeScreenshot());
+    function dis(nom, m) {
+      console.log("    " + nom.padEnd(30) + String(m.pixels).padStart(5) + " px   total " +
+        String(m.total).padStart(7) + "   moyen " + String(m.moyen).padStart(3) +
+        "   pic " + String(m.pic).padStart(3) +
+        (m.boite ? "   boîte " + JSON.stringify(m.boite) : ""));
+    }
+
+    console.log("\n  étalon — chez lui, opacité pleine par construction");
+    dis("en page", etalon);
+
+    await bouge(cible.i, cible.x, HAUT);
+
+    /* ---------- L'ÉTAT LIVRÉ EN 0.52.0 : z = 1 ---------- */
+    await moduleActif(false);
+    await force(1, 1);
+    await dors(1800);
+    const zUn = await ecart(loin, await driver.takeScreenshot());
+    console.log("\n  z = 1, w = 1   (ce qui a été livré, et signalé)");
+    dis("hors page", zUn);
+
+    /* ---------- LE CORRECTIF : w = 0 ---------- */
+    await force(0, 0);
+    await dors(1800);
+    const wZero = await ecart(loin, await driver.takeScreenshot());
+    console.log("\n  z = 0, w = 0   (le correctif, et la configuration du MJ)");
+    dis("hors page", wZero);
+
+    /* ---------- ET LE MODULE, TEL QU'IL SERA LIVRÉ ---------- */
+    await moduleActif(true);
+    await dors(2200);
+    const parLeModule = await ecart(loin, await driver.takeScreenshot());
+    const tampons = await driver.executeScript([
+      "var S = window.MeshScene, out = [];",
+      "S.meshes.forEach(function (m) {",
+      "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (b) { out.push([b.z, b.w]); }",
+      "  (m.instances || []).forEach(function (i) {",
+      "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
+      "    if (c) { out.push([c.z, c.w]); }",
+      "  });",
+      "});",
+      "return out.slice(0, 5);"
+    ].join("\n"));
+    console.log("\n  le MODULE, tel qu'il sera livré");
+    dis("hors page", parLeModule);
+    console.log("    [z, w] lus : " + JSON.stringify(tampons));
+
+    await bouge(cible.i, cible.x, cible.y);
+
+    console.log("\n  ──────────────────────────────────────────────");
+
+    /* DEUX CHIFFRES, ET AUCUN N EST LA MOYENNE.
+     *
+     * Le TOTAL des écarts est proportionnel à l opacité : diviser l alpha par
+     * deux divise la somme par deux. Le PIC dit jusqu où le pixel le plus franc
+     * du jeton s écarte du fond — à pleine opacité il doit rejoindre celui de
+     * l étalon, mesuré en page.
+     *
+     * La moyenne, elle, se calcule sur les seuls pixels retenus : à demi-opacité
+     * les bords passent sous le seuil et sortent du calcul, ce qui la remonte.
+     * Elle est imprimée pour la lecture, jamais pour trancher. */
+    var rTotal = zUn.total ? (wZero.total / zUn.total) : 0;
+    var picZ = etalon.pic ? (zUn.pic / etalon.pic) : 0;
+    var picW = etalon.pic ? (wZero.pic / etalon.pic) : 0;
+
+    console.log("  total des écarts, hors page :");
+    console.log("    z = 1  →  " + zUn.total + "   (le voile)");
+    console.log("    w = 0  →  " + wZero.total + "   (le correctif)");
+    console.log("    rapport " + rTotal.toFixed(2) + "  —  deux, si l alpha était bien divisé par deux");
+    console.log("\n  pic d écart, rapporté à l étalon en page (" + etalon.pic + ") :");
+    console.log("    z = 1  →  " + Math.round(picZ * 100) + " %");
+    console.log("    w = 0  →  " + Math.round(picW * 100) + " %");
+
+    var bon = rTotal > 1.7 && picW > 0.9 && parLeModule.total >= wZero.total * 0.9;
+    console.log("\n  le module rend " + parLeModule.total + ", soit " +
+      (wZero.total ? Math.round(parLeModule.total / wZero.total * 100) : 0) +
+      " % du correctif posé à la main");
+    console.log("  " + (bon ? "LE VOILE EST LEVÉ." : "LE VOILE EST TOUJOURS LÀ."));
+
+    releve("voile-" + quelle + ".json",
+      { cible: cible, etalon: etalon, zUn: zUn, wZero: wZero,
+        parLeModule: parLeModule, tampons: tampons,
+        rapportTotal: rTotal, picZ: picZ, picW: picW, bon: bon });
+    return bon ? 0 : 1;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- LE CLIGNOTEMENT : COMBIEN, ET POURQUOI ----------
+ *
+ * Signalé : « un clignotement toutes les X secondes, comme si ce qui empêchait
+ * de voir les jetons se remettait par-dessus, puis redescendait ». C'est
+ * exactement ce que faisait la 0.52.0 : Roll20 réécrivait `u_Board`, et le guet
+ * ne repassait que 500 ms plus tard. Entre les deux, des images étaient
+ * dessinées avec la valeur de Roll20.
+ *
+ * UNE ÉPREUVE QUI NE MONTRE QUE LE CORRECTIF NE PROUVE RIEN. Si l'on regarde la
+ * version corrigée pendant trente secondes et qu'on ne voit rien clignoter, on
+ * n'a pas montré qu'elle corrige : on a peut-être seulement regardé pendant une
+ * accalmie. Il faut le TÉMOIN — rejouer le guet à 500 ms, dans la même partie,
+ * sur le même jeton, et le voir clignoter.
+ *
+ * On mesure donc trois choses :
+ *   1. combien de fois Roll20 REMPLACE le vecteur, par identité d'objet ;
+ *   2. ce que donne le guet à 500 ms de la 0.52.0 (le témoin) ;
+ *   3. ce que donne la correction avant chaque image (ce qu'on livre).
+ */
+async function leClignotement() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const secondes = Math.max(10, parseInt(process.argv[4], 10) || 30);
+  const driver = await ouvre(config().visible === true);
+  const crypto = require("crypto");
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function bouge(i, g, h) {
+      await driver.executeScript(
+        "var m = window.Campaign.activePage().thegraphics.models;" +
+        "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
+      await dors(2800);
+    }
+    async function moduleActif(actif) {
+      await driver.executeScript(
+        "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+        " type: 'horspage', actif: arguments[0] }, location.origin);", actif);
+      await dors(2000);
+    }
+
+    /* La boîte où le jeton se dessine, découpée dans la capture puis empreinte.
+     * On ne prend QUE cette boîte : le reste de l'écran bouge tout seul — le
+     * chat, un curseur, une infobulle — et noierait le signal. */
+    async function empreinte(boite) {
+      const png = await driver.takeScreenshot();
+      const dec = await driver.executeAsyncScript(
+        "var cb = arguments[arguments.length - 1];" +
+        "var b = arguments[1];" +
+        "var img = new Image();" +
+        "img.onload = function () {" +
+        "  var c = document.createElement('canvas');" +
+        "  c.width = b[2]; c.height = b[3];" +
+        "  var g = c.getContext('2d');" +
+        "  g.drawImage(img, b[0], b[1], b[2], b[3], 0, 0, b[2], b[3]);" +
+        "  try { cb(c.toDataURL('image/png')); } catch (e) { cb('ERREUR ' + e); } };" +
+        "img.onerror = function () { cb('ERREUR chargement'); };" +
+        "img.src = 'data:image/png;base64,' + arguments[0];", png, boite);
+      if (typeof dec !== "string" || dec.indexOf("data:image/png") !== 0) { return null; }
+      return crypto.createHash("sha1")
+        .update(Buffer.from(dec.split(",")[1], "base64")).digest("hex").slice(0, 10);
+    }
+
+    async function boiteDuJeton(i, x, y, haut) {
+      const png1 = await driver.takeScreenshot();
+      await bouge(i, x, haut);
+      const png2 = await driver.takeScreenshot();
+      const b = await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        "  var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, cnt = 0;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    var d = Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2]);",
+        "    if (d < 24) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++;",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  if (!cnt) { cb(null); return; }",
+        "  var m = 6;",
+        "  cb([Math.max(0, x0 - m), Math.max(0, y0 - m),",
+        "      Math.min(c.width, x1 - x0 + 1 + 2*m), Math.min(c.height, y1 - y0 + 1 + 2*m)]);",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = B.onerror = function () { cb(null); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), png1, png2);
+      return b;
+    }
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top') };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")");
+
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("  dézoom : " + dez);
+    await dors(3000);
+
+    const HAUT = -280;
+    const boite = await boiteDuJeton(cible.i, cible.x, cible.y, HAUT);
+    if (!boite) { console.log("  le jeton ne se voit pas hors page : rien à mesurer."); return 1; }
+    console.log("  boîte suivie : " + JSON.stringify(boite));
+
+    /* ---------- 1. ROLL20 REMPLACE-T-IL LE VECTEUR, ET À QUEL RYTHME ? ----------
+     *
+     * On compte par IDENTITÉ D'OBJET, et non par valeur : notre module corrige
+     * la valeur avant chaque image, donc la valeur ne dit plus rien. Le vecteur
+     * NEUF, lui, se voit. La première image sert de référence et ne compte pas. */
+    await driver.executeScript([
+      "window.__vttkMouchard = { images: 0, neufs: 0, premiere: true, fautifs: 0 };",
+      "var S = window.MeshScene, vus = new WeakSet(), M = window.__vttkMouchard;",
+      "M.obs = S.onBeforeRenderObservable.add(function () {",
+      "  M.images++;",
+      "  var l = S.meshes, i, j, ins, b;",
+      "  function voir(m) {",
+      "    b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "    if (!b) { return; }",
+      "    if (!vus.has(b)) { vus.add(b); if (!M.premiere) { M.neufs++; } }",
+      "    if (b.w !== 0) { M.fautifs++; }",
+      "  }",
+      "  for (i = 0; i < l.length; i++) {",
+      "    voir(l[i]);",
+      "    ins = l[i].instances;",
+      "    if (!ins) { continue; }",
+      "    for (j = 0; j < ins.length; j++) { voir(ins[j]); }",
+      "  }",
+      "  M.premiere = false;",
+      "});",
+      "return 'mouchard posé';"
+    ].join("\n"));
+
+    /* ---------- 2. LA VERSION LIVRÉE : correction avant chaque image ---------- */
+    console.log("\n  -- LA VERSION CORRIGÉE, " + secondes + " s --");
+    const vues = {};
+    const debut = [];
+    for (let k = 0; k < Math.round(secondes / 1.2); k++) {
+      const h = await empreinte(boite);
+      if (h) { vues[h] = (vues[h] || 0) + 1; debut.push(h); }
+      await dors(900);
+    }
+    const m1 = await driver.executeScript(
+      "var M = window.__vttkMouchard; return { images: M.images, neufs: M.neufs, fautifs: M.fautifs };");
+    const distinctes = Object.keys(vues);
+    console.log("    " + debut.length + " relevés, " + distinctes.length + " image(s) distincte(s)");
+    distinctes.forEach(function (h) { console.log("      " + h + "   ×" + vues[h]); });
+    console.log("    Roll20 a remplacé le vecteur " + m1.neufs + " fois en " + m1.images + " images");
+    console.log("    images dessinées avec sa valeur : " + m1.fautifs);
+
+    /* ---------- 3. LE TÉMOIN : le guet à 500 ms de la 0.52.0 ----------
+     *
+     * On éteint le module — il retire son observateur — et l'on remet à sa place
+     * exactement ce que faisait la version signalée : la même correction, mais
+     * sur une horloge de 500 ms. Si le clignotement vient bien de là, il revient. */
+    console.log("\n  -- LE TÉMOIN : le guet à 500 ms de la 0.52.0, " + secondes + " s --");
+    await moduleActif(false);
+    await driver.executeScript([
+      "var S = window.MeshScene;",
+      "window.__vttkVieux = setInterval(function () {",
+      "  var l = S.meshes, i, j, ins, b;",
+      "  function pose(m) {",
+      "    b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "    if (b) { b.w = 0; }",
+      "  }",
+      "  for (i = 0; i < l.length; i++) {",
+      "    pose(l[i]);",
+      "    ins = l[i].instances;",
+      "    if (!ins) { continue; }",
+      "    for (j = 0; j < ins.length; j++) { pose(ins[j]); }",
+      "  }",
+      "}, 500);",
+      "return 'guet 500 ms posé';"
+    ].join("\n"));
+    await dors(1500);
+
+    const vues2 = {};
+    for (let k = 0; k < Math.round(secondes / 1.2); k++) {
+      const h = await empreinte(boite);
+      if (h) { vues2[h] = (vues2[h] || 0) + 1; }
+      await dors(900);
+    }
+    const distinctes2 = Object.keys(vues2);
+    console.log("    " + distinctes2.length + " image(s) distincte(s)");
+    distinctes2.forEach(function (h) { console.log("      " + h + "   ×" + vues2[h]); });
+
+    await driver.executeScript(
+      "clearInterval(window.__vttkVieux); window.__vttkVieux = null;" +
+      "try { window.MeshScene.onBeforeRenderObservable.remove(window.__vttkMouchard.obs); } catch (e) {}");
+    await moduleActif(true);
+    await bouge(cible.i, cible.x, cible.y);
+
+    console.log("\n  ──────────────────────────────────────────────");
+    console.log("  version corrigée : " + distinctes.length + " image(s) distincte(s)");
+    console.log("  guet à 500 ms    : " + distinctes2.length + " image(s) distincte(s)");
+    const temoinValide = m1.neufs > 0;
+    const bon = distinctes.length === 1 && m1.fautifs === 0;
+    if (!temoinValide) {
+      console.log("  Roll20 n'a rien réécrit pendant l'épreuve : elle ne tranche pas.");
+      console.log("  Rallonge la durée (node outils/pilote.js clignote joueur 90).");
+    } else if (bon) {
+      console.log("  AUCUNE IMAGE dessinée avec la valeur de Roll20, alors qu'il a");
+      console.log("  remplacé le vecteur " + m1.neufs + " fois. Le clignotement est levé.");
+    } else {
+      console.log("  IL RESTE " + m1.fautifs + " image(s) fautive(s) et " + distinctes.length +
+        " image(s) distincte(s) : ça clignote encore.");
+    }
+
+    releve("clignote-" + quelle + ".json",
+      { cible: cible, boite: boite, secondes: secondes,
+        corrige: { distinctes: distinctes.length, vues: vues, mouchard: m1 },
+        temoin500: { distinctes: distinctes2.length, vues: vues2 },
+        bon: bon, temoinValide: temoinValide });
+    return bon ? 0 : 1;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- QU'EST-CE QUI FAIT RÉÉCRIRE u_Board À ROLL20 ? ----------
+ *
+ * Sur une page au repos, il ne le réécrit PAS : zéro remplacement en 787 images,
+ * quarante-cinq secondes durant. Le clignotement signalé vient donc d'un GESTE,
+ * pas du temps qui passe — et tant qu'on ne sait pas lequel, on ne peut ni le
+ * reproduire ni prouver qu'on l'a corrigé.
+ *
+ * On pose un mouchard qui compte les remplacements par IDENTITÉ D'OBJET — la
+ * valeur ne dit plus rien, notre module la corrige avant chaque image — puis on
+ * joue une série de gestes, un par un, et l'on relève ce que chacun coûte.
+ *
+ * Le mouchard note aussi les images dessinées avec un w fautif. Il est posé
+ * APRÈS l'observateur du module, donc il voit l'état CORRIGÉ : s'il compte des
+ * fautifs, c'est que la correction n'a pas tenu, et c'est exactement le défaut
+ * qu'on traque.
+ */
+async function quiDeclencheLaReecriture() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top'),",
+      "             l: g[i].get('width'), h: g[i].get('height'), rot: g[i].get('rotation') || 0 };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")  " +
+      cible.l + " x " + cible.h);
+
+    await driver.executeScript([
+      "window.__vttkMouchard = { images: 0, neufs: 0, premiere: true, fautifs: 0, vus: new WeakSet() };",
+      "var S = window.MeshScene, M = window.__vttkMouchard;",
+      "M.obs = S.onBeforeRenderObservable.add(function () {",
+      "  M.images++;",
+      "  var l = S.meshes, i, j, ins;",
+      "  function voir(m) {",
+      "    var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "    if (!b) { return; }",
+      "    if (!M.vus.has(b)) { M.vus.add(b); if (!M.premiere) { M.neufs++; } }",
+      "    if (b.w !== 0) { M.fautifs++; }",
+      "  }",
+      "  for (i = 0; i < l.length; i++) {",
+      "    voir(l[i]);",
+      "    ins = l[i].instances;",
+      "    if (!ins) { continue; }",
+      "    for (j = 0; j < ins.length; j++) { voir(ins[j]); }",
+      "  }",
+      "  M.premiere = false;",
+      "});",
+      "return 'posé';"
+    ].join("\n"));
+
+    async function releveM() {
+      return await driver.executeScript(
+        "var M = window.__vttkMouchard; return { images: M.images, neufs: M.neufs, fautifs: M.fautifs };");
+    }
+    async function magasin() {
+      return await driver.executeScript([
+        "var st = null;",
+        "document.querySelectorAll('*').forEach(function (n) {",
+        "  if (st || !n.__vue_app__) { return; }",
+        "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+        "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+        "});",
+        "window.__vttkEngine = st; return !!st;"
+      ].join("\n"));
+    }
+    await magasin();
+    await driver.executeScript("if (window.__vttkEngine) { window.__vttkEngine.setZoom(30); }");
+    await dors(3000);
+
+    let precedent = await releveM();
+
+    /* Chaque geste, isolé, et ce qu'il coûte. On laisse deux secondes après
+     * chacun : une réécriture peut arriver au tour de boucle suivant. */
+    async function geste(nom, script, args) {
+      const avant = await releveM();
+      try { await driver.executeScript(script, ...(args || [])); }
+      catch (e) { console.log("    " + nom.padEnd(34) + "IMPOSSIBLE : " + String(e).slice(0, 60)); return; }
+      await dors(2500);
+      const apres = await releveM();
+      const dn = apres.neufs - avant.neufs;
+      const df = apres.fautifs - avant.fautifs;
+      const di = apres.images - avant.images;
+      console.log("    " + nom.padEnd(34) +
+        String(dn).padStart(4) + " remplacement(s)" +
+        "   " + String(df).padStart(4) + " image(s) fautive(s)" +
+        "   sur " + String(di).padStart(4) + " images");
+      precedent = apres;
+    }
+
+    const M = "var g = window.Campaign.activePage().thegraphics.models; var t = g[" + cible.i + "];";
+    console.log("\n  -- CE QUE CHAQUE GESTE COÛTE --");
+    await geste("rien du tout (témoin)", "return 1;");
+    await geste("déplacer le jeton", M + "t.save({ left: " + cible.x + ", top: -280 });");
+    await geste("le redéplacer", M + "t.save({ left: " + (cible.x + 70) + ", top: -280 });");
+    await geste("le redimensionner", M + "t.save({ width: " + (cible.l * 1.5) + " });");
+    await geste("le remettre à sa taille", M + "t.save({ width: " + cible.l + " });");
+    await geste("le faire tourner", M + "t.save({ rotation: 45 });");
+    await geste("le remettre droit", M + "t.save({ rotation: " + cible.rot + " });");
+    await geste("changer son opacité", M + "t.save({ fliph: true });");
+    await geste("la remettre", M + "t.save({ fliph: false });");
+    await geste("poser un marqueur d'état", M + "t.save({ statusmarkers: 'red' });");
+    await geste("l'ôter", M + "t.save({ statusmarkers: '' });");
+    await geste("zoomer", "if (window.__vttkEngine) { window.__vttkEngine.setZoom(60); }");
+    await geste("dézoomer", "if (window.__vttkEngine) { window.__vttkEngine.setZoom(30); }");
+    await geste("changer la couche du jeton", M + "t.save({ layer: 'map' });");
+    await geste("la remettre", M + "t.save({ layer: 'objects' });");
+    await geste("attendre 10 s", "return 1;");
+    await dors(9000);
+    const apresAttente = await releveM();
+    console.log("    " + "(après 10 s de plus)".padEnd(34) +
+      String(apresAttente.neufs - precedent.neufs).padStart(4) + " remplacement(s)" +
+      "   " + String(apresAttente.fautifs - precedent.fautifs).padStart(4) + " image(s) fautive(s)" +
+      "   sur " + String(apresAttente.images - precedent.images).padStart(4) + " images");
+
+    const total = await releveM();
+    await driver.executeScript(
+      "try { window.MeshScene.onBeforeRenderObservable.remove(window.__vttkMouchard.obs); } catch (e) {}");
+    await driver.executeScript(M + "t.save({ left: " + cible.x + ", top: " + cible.y +
+      ", width: " + cible.l + ", height: " + cible.h + ", rotation: " + cible.rot +
+      ", layer: 'objects', statusmarkers: '', fliph: false });");
+    console.log("\n  jeton remis en (" + cible.x + ", " + cible.y + ")");
+
+    console.log("\n  ──────────────────────────────────────────────");
+    console.log("  " + total.neufs + " remplacement(s) au total, sur " + total.images + " images");
+    console.log("  " + total.fautifs + " image(s) dessinée(s) avec la valeur de Roll20");
+    if (total.neufs === 0) {
+      console.log("  AUCUN GESTE NE LE FAIT RÉÉCRIRE ICI. Le clignotement vient d'ailleurs,");
+      console.log("  et l'épreuve ne l'a pas trouvé — il ne faut pas conclure qu'il est levé.");
+    } else if (total.fautifs === 0) {
+      console.log("  Il réécrit, et pas une seule image n'a été dessinée avec sa valeur :");
+      console.log("  la correction avant chaque image tient.");
+    } else {
+      console.log("  IL RESTE DES IMAGES FAUTIVES : ça clignote encore.");
+    }
+
+    releve("declenche-" + quelle + ".json", { cible: cible, total: total });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- LA SCÈNE SURVIT-ELLE À UN CHANGEMENT DE PAGE ? ----------
+ *
+ * Le module accroche son observateur à `window.MeshScene`. Si Roll20 remplace
+ * cette scène — un changement de page, par exemple, décidé par le MJ et subi par
+ * tous les joueurs —, l'observateur reste sur la MORTE : il ne se déclenche plus
+ * jamais, la nouvelle n'a aucun guet, et les jetons hors page redisparaissent.
+ *
+ * Sans un mot. Le module continue de se dire allumé, sa case reste cochée, et
+ * personne ne peut deviner qu'il a lâché.
+ *
+ * On ne devine pas non plus : on regarde si l'objet change d'identité.
+ */
+async function laSceneSurvit() {
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    /* SUR LA PARTIE OÙ L'ON EST MJ : changer de page est son geste, pas celui
+     * d'un joueur, et c'est justement le geste qu'on veut éprouver. */
+    if (!(await vaALaPartie(driver, partieDEssai("mj")))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    /* On marque la scène en cours : une propriété à nous, que Roll20 ne pose
+     * pas. Si elle a disparu après le changement, l'objet n'est plus le même. */
+    const pages = await driver.executeScript([
+      "window.MeshScene.__vttkMarque = 'scene-A';",
+      "var C = window.Campaign;",
+      "var l = (C.pages && C.pages.models) ? C.pages.models : [];",
+      "return { active: C.get('playerpageid'),",
+      "  pages: l.map(function (p) { return { id: p.id, nom: p.get('name') }; }),",
+      "  marque: window.MeshScene.__vttkMarque,",
+      "  observateurs: (window.MeshScene.onBeforeRenderObservable &&",
+      "    window.MeshScene.onBeforeRenderObservable._observers || []).length };"
+    ].join("\n"));
+    console.log("\n  page active : " + pages.active);
+    pages.pages.forEach(function (p) {
+      console.log("    " + p.id + "   " + p.nom + (p.id === pages.active ? "   ← active" : ""));
+    });
+    console.log("  marque posée : " + pages.marque +
+      "   observateurs de rendu : " + pages.observateurs);
+
+    const autre = pages.pages.filter(function (p) { return p.id !== pages.active; })[0];
+    if (!autre) {
+      console.log("\n  une seule page dans cette partie : on ne peut pas éprouver le changement.");
+      return 1;
+    }
+
+    console.log("\n  on bascule sur « " + autre.nom + " »");
+    await driver.executeScript(
+      "window.Campaign.save({ playerpageid: arguments[0] });", autre.id);
+    await dors(9000);
+
+    const apres = await driver.executeScript([
+      "var S = window.MeshScene;",
+      "return { marque: S ? (S.__vttkMarque || null) : 'PAS DE SCENE',",
+      "  observateurs: (S && S.onBeforeRenderObservable &&",
+      "    S.onBeforeRenderObservable._observers || []).length,",
+      "  maillages: S ? S.meshes.length : null,",
+      "  active: window.Campaign.get('playerpageid') };"
+    ].join("\n"));
+    console.log("  page active : " + apres.active);
+    console.log("  marque retrouvée : " + apres.marque +
+      "   observateurs : " + apres.observateurs + "   maillages : " + apres.maillages);
+
+    /* ET LE MODULE TIENT-IL ENCORE ? On regarde ce que valent les tampons. */
+    const tampons = await driver.executeScript([
+      "var S = window.MeshScene, out = [];",
+      "S.meshes.forEach(function (m) {",
+      "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (b) { out.push(b.w); }",
+      "  (m.instances || []).forEach(function (i) {",
+      "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
+      "    if (c) { out.push(c.w); }",
+      "  });",
+      "});",
+      "return out;"
+    ].join("\n"));
+    console.log("  w des tampons après bascule : " + JSON.stringify(tampons));
+
+    await driver.executeScript(
+      "window.Campaign.save({ playerpageid: arguments[0] });", pages.active);
+    await dors(6000);
+    console.log("  page rendue à « " + (pages.pages.filter(function (p) {
+      return p.id === pages.active; })[0] || {}).nom + " »");
+
+    console.log("\n  ──────────────────────────────────────────────");
+    const memeScene = apres.marque === "scene-A";
+    const tousANeuf = tampons.length > 0 && tampons.every(function (w) { return w === 0; });
+    if (memeScene) {
+      console.log("  LA SCÈNE SURVIT : c'est le même objet, l'observateur tient.");
+    } else {
+      console.log("  LA SCÈNE EST REMPLACÉE. L'observateur du module est resté sur la morte :");
+      console.log("  il faut se raccrocher, sinon le module lâche en silence au premier");
+      console.log("  changement de page.");
+    }
+    console.log("  et les tampons de la nouvelle page : " +
+      (tousANeuf ? "tous à zéro, le module tient encore"
+                 : "PAS tous à zéro — " + JSON.stringify(tampons)));
+
+    releve("scene-mj.json", { avant: pages, apres: apres, tampons: tampons, memeScene: memeScene });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- CE QUE COÛTE UNE CORRECTION AVANT CHAQUE IMAGE ----------
+ *
+ * Le module ne repasse plus toutes les 500 ms mais AVANT CHAQUE IMAGE, et Roll20
+ * dessine au rythme de l'écran — cent quatre-vingts fois par seconde sur ce
+ * poste. Un parcours de tous les maillages, cent quatre-vingts fois par seconde,
+ * mérite d'être chiffré plutôt que présumé négligeable : c'est le genre de
+ * décision qu'on justifie après coup en disant « ça ne coûte rien », sans avoir
+ * regardé.
+ *
+ * On mesure deux choses, et la seconde vaut mieux que la première :
+ *   1. le temps du parcours lui-même, moyenné sur des milliers d'appels ;
+ *   2. la CADENCE D'AFFICHAGE, module allumé puis éteint — seul chiffre qui dise
+ *      ce que l'utilisateur ressent.
+ */
+async function coutHorsPage() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function moduleActif(actif) {
+      await driver.executeScript(
+        "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+        " type: 'horspage', actif: arguments[0] }, location.origin);", actif);
+      await dors(2500);
+    }
+
+    const scene = await driver.executeScript([
+      "var S = window.MeshScene, n = 0, ins = 0, tampons = 0;",
+      "S.meshes.forEach(function (m) {",
+      "  n++;",
+      "  if (m.instancedBuffers && m.instancedBuffers.u_Board) { tampons++; }",
+      "  (m.instances || []).forEach(function (i) {",
+      "    ins++;",
+      "    if (i.instancedBuffers && i.instancedBuffers.u_Board) { tampons++; }",
+      "  });",
+      "});",
+      "return { maillages: n, instances: ins, tampons: tampons };"
+    ].join("\n"));
+    console.log("\n  scène : " + scene.maillages + " maillages, " + scene.instances +
+      " instances, " + scene.tampons + " tampons");
+
+    /* ---------- 1. LE PARCOURS, CHRONOMÉTRÉ ----------
+     *
+     * On rejoue EXACTEMENT ce que fait hpCorrige — même parcours, même test,
+     * même écriture conditionnelle — et on le moyenne sur assez d'appels pour
+     * sortir du bruit de l'horloge. */
+    const chrono = await driver.executeScript([
+      "var S = window.MeshScene;",
+      /* L ANCIENNE ÉCRITURE : une fermeture neuve par appel, un objet de
+       * retour alloué, un appel indirect par tampon. */
+      "function parcourt(fn) {",
+      "  var l = S.meshes, i, j, ins, b, vus = 0, touches = 0;",
+      "  function prend(m) { return m && m.instancedBuffers && m.instancedBuffers.u_Board; }",
+      "  for (i = 0; i < l.length; i++) {",
+      "    b = prend(l[i]);",
+      "    if (b) { vus++; if (fn(b)) { touches++; } }",
+      "    ins = l[i].instances;",
+      "    if (!ins) { continue; }",
+      "    for (j = 0; j < ins.length; j++) {",
+      "      b = prend(ins[j]);",
+      "      if (b) { vus++; if (fn(b)) { touches++; } }",
+      "    }",
+      "  }",
+      "  return { tampons: vus, poses: touches };",
+      "}",
+      "function ancienne() {",
+      "  return parcourt(function (b) {",
+      "    if (b.w === 0) { return false; }",
+      "    b.w = 0; return true;",
+      "  });",
+      "}",
+      /* LA NEUVE, telle qu elle est ÉCRITE dans le pont : rien de construit,
+       * la couche vérifiée, et surtout une SORTIE TÔT sur « w vaut déjà zéro ».
+       *
+       * C est cette sortie qui décide du prix en régime établi : une fois les
+       * tampons corrigés, plus aucun ne remonte sa chaîne de parents. La
+       * remontée ne coûte que l image qui suit une réécriture de Roll20 — et
+       * l on en a compté quatre sur mille images. */
+      "function surLaCouche(m) {",
+      "  var n = m, k = 0;",
+      "  while (n.parent && k < 8) { n = n.parent; k++; }",
+      "  return String(n.name || '') === 'tokens-layer';",
+      "}",
+      "function un(m) {",
+      "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (!b || b.w === 0) { return false; }",
+      "  if (!surLaCouche(m)) { return false; }",
+      "  b.w = 0; return true;",
+      "}",
+      "function neuve() {",
+      "  var l = S.meshes, i, j, ins, m;",
+      "  for (i = 0; i < l.length; i++) {",
+      "    m = l[i]; un(m);",
+      "    ins = m.instances;",
+      "    if (!ins) { continue; }",
+      "    for (j = 0; j < ins.length; j++) { un(ins[j]); }",
+      "  }",
+      "}",
+      "var N = 20000, k, g = 0;",
+      "for (k = 0; k < 3000; k++) { g += ancienne().tampons; neuve(); }",
+      "var a0 = performance.now();",
+      "for (k = 0; k < N; k++) { g += ancienne().tampons; }",
+      "var a1 = performance.now();",
+      "for (k = 0; k < N; k++) { neuve(); }",
+      "var a2 = performance.now();",
+      "return { ancienne: ((a1 - a0) / N) * 1000, neuve: ((a2 - a1) / N) * 1000,",
+      "  appels: N, gage: g };"
+    ].join("\n"));
+    console.log("\n  -- LE PARCOURS, LES DEUX ÉCRITURES --");
+    console.log("    par fermeture (ce qui était écrit) : " + chrono.ancienne.toFixed(2) + " µs");
+    console.log("    en clair       (ce qui est écrit)  : " + chrono.neuve.toFixed(2) + " µs" +
+      "   soit " + (chrono.ancienne / chrono.neuve).toFixed(1) + " fois moins");
+
+    /* ---------- 2. LA CADENCE, CE QUI SE RESSENT ----------
+     *
+     * On compte les images sur dix secondes, module allumé puis éteint. C'est le
+     * seul chiffre qui parle de ce qu'on voit, et il porte son propre témoin :
+     * si les deux mesures d'un même état diffèrent déjà, l'écart entre états ne
+     * veut rien dire. */
+    async function cadence(secondes) {
+      await driver.executeScript([
+        "window.__vttkFps = { n: 0 };",
+        "var S = window.MeshScene;",
+        "window.__vttkFps.obs = S.onBeforeRenderObservable.add(function () { window.__vttkFps.n++; });"
+      ].join("\n"));
+      await dors(secondes * 1000);
+      const n = await driver.executeScript([
+        "var F = window.__vttkFps;",
+        "try { window.MeshScene.onBeforeRenderObservable.remove(F.obs); } catch (e) {}",
+        "return F.n;"
+      ].join("\n"));
+      return n / secondes;
+    }
+
+    /* ON ALTERNE LES DEUX ÉTATS, ET ON ALTERNE PLUSIEURS FOIS.
+     *
+     * Mesurer dix secondes allumé puis dix secondes éteint donne un écart qui
+     * contient la DÉRIVE de la page — elle se charge, elle se calme, elle
+     * ralentit sous une autre charge. Le premier essai a rendu 20,0 contre
+     * 20,8 : de quoi conclure à un coût de 3 %, pour un travail chronométré à
+     * quelques microsecondes par image. C était la dérive, pas le module.
+     *
+     * En alternant A B A B A B, la dérive frappe les deux états également et
+     * l ÉCART DES MOYENNES la perd. L écart entre répétitions d un même état
+     * donne le bruit, et c est à lui qu on compare. */
+    console.log("\n  -- LA CADENCE D AFFICHAGE, EN ALTERNANCE --");
+    var mesA = [], mesE = [];
+    for (var tour = 0; tour < 3; tour++) {
+      await moduleActif(true);
+      mesA.push(await cadence(8));
+      await moduleActif(false);
+      mesE.push(await cadence(8));
+      console.log("    tour " + (tour + 1) + "   allumé " + mesA[tour].toFixed(1) +
+        "   éteint " + mesE[tour].toFixed(1));
+    }
+    await moduleActif(true);
+
+    function moyenne(l) { return l.reduce(function (a, b) { return a + b; }, 0) / l.length; }
+    function etendue(l) { return Math.max.apply(null, l) - Math.min.apply(null, l); }
+    const allume = moyenne(mesA), eteint = moyenne(mesE);
+    const bruit = Math.max(etendue(mesA), etendue(mesE));
+    const ecart = eteint - allume;
+
+    console.log("\n  ──────────────────────────────────────────────");
+    console.log("  parcours : " + chrono.neuve.toFixed(2) + " µs par image");
+    console.log("  cadence  : " + allume.toFixed(1) + " allumé contre " +
+      eteint.toFixed(1) + " éteint   (écart " + ecart.toFixed(2) + ")");
+    console.log("  bruit entre répétitions d un même état : " + bruit.toFixed(2));
+    if (Math.abs(ecart) <= bruit) {
+      console.log("  L ÉCART EST SOUS LE BRUIT : le module ne se mesure pas à la cadence.");
+    } else {
+      console.log("  L écart dépasse le bruit : il coûte " + ecart.toFixed(2) + " images/s.");
+    }
+
+    releve("cout-horspage-" + quelle + ".json",
+      { scene: scene, chrono: chrono, allume: mesA, eteint: mesE,
+        ecart: ecart, bruit: bruit });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- LE MODULE CHANGE-T-IL AUTRE CHOSE QUE LES JETONS ? ----------
+ *
+ * Relevé chez le MJ, en éteignant le module : dix-neuf mille pixels changent, sur
+ * une boîte de 484 × 782 — bien plus qu'un jeton. Et deux tampons y reviennent à
+ * w = 1 alors que tous les autres valaient déjà zéro.
+ *
+ * C'est cohérent avec le nuanceur, et c'est ma faute de ne pas l'avoir vu :
+ *
+ *     if (v_Offboard == 1.) { offBoard = <déborde ?>; if (offBoard && z==0) discard; }
+ *     ...
+ *     if (offBoard && v_GridAlign != 1.0) { glFragColor.a *= 0.5; }
+ *
+ * Poser w = 0 ne fait pas que sauver les jetons du rejet : ça éteint AUSSI la
+ * demi-teinte pour TOUT maillage qui portait w = 1 et qui déborde de la page.
+ * Chez le MJ, où rien n'est jeté (z = 1), c'est le SEUL effet — et il est
+ * visible.
+ *
+ * La documentation du module dit « chez le MJ il ne fait rien ». Si c'est faux,
+ * il faut le dire ; et si l'effet n'est pas voulu, il faut le corriger.
+ *
+ * On ne bouge donc AUCUN jeton : on éteint et on rallume, et on regarde ce que
+ * l'écran fait — puis on nomme les maillages en cause.
+ */
+async function effetDeBord() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function differe(aB64, bB64) {
+      return await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        "  var cnt = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    var d = Math.abs(a[i]-b[i]) + Math.abs(a[i+1]-b[i+1]) + Math.abs(a[i+2]-b[i+2]);",
+        "    if (d < 12) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++;",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  cb({ pixels: cnt, boite: cnt ? [x0, y0, x1 - x0 + 1, y1 - y0 + 1] : null });",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = B.onerror = function () { cb({ erreur: 1 }); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), aB64, bB64);
+    }
+    async function moduleActif(actif) {
+      await driver.executeScript(
+        "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+        " type: 'horspage', actif: arguments[0] }, location.origin);", actif);
+      await dors(2500);
+    }
+
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("\n  dézoom : " + dez + "   (toute la page à l'écran, et sa marge)");
+    await dors(3000);
+
+    /* QUELS MAILLAGES PORTENT w = 1 ? Ce sont eux, et eux seuls, que le module
+     * touche. On les nomme avant d'y toucher. */
+    const qui = await driver.executeScript([
+      "var S = window.MeshScene, out = [];",
+      "function voir(m, dansUneInstance) {",
+      "  var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (!b) { return; }",
+      "  out.push({ nom: String(m.name || '').slice(0, 46), instance: !!dansUneInstance,",
+      "             z: b.z, w: b.w, vttkW: b.vttkW === undefined ? null : b.vttkW });",
+      "}",
+      "S.meshes.forEach(function (m) {",
+      "  voir(m, false);",
+      "  (m.instances || []).forEach(function (i) { voir(i, true); });",
+      "});",
+      "return { gmMode: S.metadata ? !!S.metadata.gmMode : null, tampons: out };"
+    ].join("\n"));
+    console.log("  gmMode : " + qui.gmMode + "   " + qui.tampons.length + " tampons");
+
+    await moduleActif(true);
+    await dors(2500);
+    const allume = await driver.takeScreenshot();
+    await moduleActif(false);
+    await dors(2500);
+    const eteint = await driver.takeScreenshot();
+    const d1 = await differe(allume, eteint);
+
+    /* Et l'on relit : qui portait quoi, une fois rendu à Roll20 ? */
+    const rendu = await driver.executeScript([
+      "var S = window.MeshScene, out = [];",
+      "function voir(m) {",
+      "  var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (!b) { return; }",
+      "  if (b.w !== 0) { out.push({ nom: String(m.name || '').slice(0, 46), z: b.z, w: b.w }); }",
+      "}",
+      "S.meshes.forEach(function (m) { voir(m); (m.instances || []).forEach(voir); });",
+      "return out;"
+    ].join("\n"));
+
+    await moduleActif(true);
+    await dors(2500);
+    const rallume = await driver.takeScreenshot();
+    const d2 = await differe(allume, rallume);
+
+    console.log("\n  -- CE QUE LE MODULE CHANGE, SANS QU'UN JETON AIT BOUGÉ --");
+    console.log("    allumé → éteint   : " + d1.pixels + " pixels   boîte " + JSON.stringify(d1.boite));
+    console.log("    allumé → rallumé  : " + d2.pixels + " pixels   (le bruit de l'épreuve)");
+
+    console.log("\n  -- LES MAILLAGES QUE ROLL20 MET À w = 1 --");
+    if (!rendu.length) { console.log("    aucun : Roll20 les met tous à zéro sur cette page."); }
+    rendu.forEach(function (m) {
+      console.log("    " + m.nom.padEnd(48) + "z " + m.z + "   w " + m.w);
+    });
+
+    console.log("\n  ──────────────────────────────────────────────");
+    const propre = d1.pixels <= Math.max(40, d2.pixels * 3);
+    if (propre) {
+      console.log("  Le module ne change RIEN d'autre que les jetons hors page :");
+      console.log("  " + d1.pixels + " pixels, pour " + d2.pixels + " de bruit.");
+    } else {
+      console.log("  IL CHANGE " + d1.pixels + " PIXELS SANS QU'UN JETON AIT BOUGÉ,");
+      console.log("  pour " + d2.pixels + " de bruit. Poser w = 0 éteint aussi la demi-teinte");
+      console.log("  que Roll20 applique hors page aux maillages ci-dessus. Ce n'est pas");
+      console.log("  ce que le module promet.");
+    }
+
+    releve("bord-" + quelle + ".json",
+      { gmMode: qui.gmMode, avant: qui.tampons, rendu: rendu, d1: d1, d2: d2, propre: propre });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- QU'EST-CE QUI SÉPARE UN JETON D'UNE IMAGE DE CARTE ? ----------
+ *
+ * Roll20 écrit w ainsi :  w = (!gmMode || layerName === <quelque chose>) ? 1 : 0
+ *
+ * Chez un JOUEUR, `!gmMode` est vrai : tout reçoit w = 1, et la couche n'y
+ * paraît pas. Chez le MJ, elle décide seule — et l'on a mesuré le résultat :
+ * ses jetons reçoivent w = 0, ses images de carte w = 1.
+ *
+ * Autrement dit, LA RÈGLE EST OBSERVABLE CHEZ LE MJ, et nulle part ailleurs.
+ * On la relève donc là, en regardant tout ce qui pourrait porter la couche, et
+ * l'on garde la propriété qui sépare exactement les deux groupes.
+ *
+ * C'est ce qui manque au module : poser w = 0 partout éteint aussi la
+ * demi-teinte que Roll20 applique hors page aux images de carte — dix-huit mille
+ * pixels, mesurés. Il faut ne le poser QUE là où le MJ l'a.
+ */
+async function quiEstQuoi() {
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    /* SUR LA PARTIE OÙ L'ON EST MJ : c'est le seul client où la règle se voit. */
+    if (!(await vaALaPartie(driver, partieDEssai("mj")))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    /* ON ÉTEINT LE MODULE : sinon on lit NOS zéros et non ceux de Roll20. */
+    await driver.executeScript(
+      "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+      " type: 'horspage', actif: false }, location.origin);");
+    await dors(3000);
+
+    const l = await driver.executeScript([
+      "var S = window.MeshScene, out = [];",
+      "function decris(m, source) {",
+      "  var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (!b) { return; }",
+      "  out.push({",
+      "    nom: String(m.name || '').slice(0, 56),",
+      "    w: b.w, z: b.z,",
+      "    source: source ? String(source.name || '').slice(0, 56) : null,",
+      "    parent: m.parent ? String(m.parent.name || '').slice(0, 56) : null,",
+      "    groupe: m.renderingGroupId,",
+      "    couches: m.layerMask,",
+      "    /* Tout ce que Roll20 aurait pu accrocher au maillage. */",
+      "    metadata: m.metadata ? JSON.stringify(m.metadata).slice(0, 200) : null,",
+      "    metaSource: (source && source.metadata) ? JSON.stringify(source.metadata).slice(0, 200) : null,",
+      "    /* Et les autres attributs d'instance, qui portent peut-être la réponse. */",
+      "    attributs: m.instancedBuffers ? Object.keys(m.instancedBuffers).join(',') : null,",
+      "    gridAlign: (m.instancedBuffers && m.instancedBuffers.u_GridAlign !== undefined)",
+      "      ? m.instancedBuffers.u_GridAlign : null",
+      "  });",
+      "}",
+      "S.meshes.forEach(function (m) {",
+      "  decris(m, null);",
+      "  (m.instances || []).forEach(function (i) { decris(i, m); });",
+      "});",
+      "return { gmMode: S.metadata ? !!S.metadata.gmMode : null, l: out };"
+    ].join("\n"));
+
+    console.log("\n  gmMode : " + l.gmMode + "   " + l.l.length + " tampons\n");
+    const un = l.l.filter(function (m) { return m.w === 1; });
+    const zero = l.l.filter(function (m) { return m.w !== 1; });
+
+    function montre(titre, groupe) {
+      console.log("  -- " + titre + " (" + groupe.length + ") --");
+      groupe.slice(0, 6).forEach(function (m) {
+        console.log("    " + m.nom);
+        console.log("      source   " + m.source);
+        console.log("      parent   " + m.parent + "   groupe " + m.groupe +
+          "   masque " + m.couches + "   gridAlign " + m.gridAlign);
+        console.log("      attributs " + m.attributs);
+        if (m.metadata) { console.log("      meta     " + m.metadata); }
+        if (m.metaSource) { console.log("      metaSrc  " + m.metaSource); }
+      });
+      if (groupe.length > 6) { console.log("    … et " + (groupe.length - 6) + " autres"); }
+      console.log("");
+    }
+    montre("w = 1   (Roll20 laisse le test s'exécuter)", un);
+    montre("w = 0   (Roll20 saute le test)", zero);
+
+    /* ---------- QUELLE PROPRIÉTÉ SÉPARE EXACTEMENT LES DEUX ? ---------- */
+    console.log("  -- CE QUI SÉPARE LES DEUX GROUPES --");
+    const champs = ["source", "parent", "groupe", "couches", "gridAlign"];
+    champs.forEach(function (c) {
+      const a = new Set(un.map(function (m) { return String(m[c]); }));
+      const b = new Set(zero.map(function (m) { return String(m[c]); }));
+      const commun = [...a].filter(function (v) { return b.has(v); });
+      console.log("    " + c.padEnd(10) +
+        "  w=1 : " + [...a].slice(0, 3).map(function (v) { return v.slice(0, 30); }).join(" | ") +
+        "   ||   w=0 : " + [...b].slice(0, 3).map(function (v) { return v.slice(0, 30); }).join(" | ") +
+        (commun.length ? "   ← SE CHEVAUCHENT" : "   ← SÉPARE"));
+    });
+
+    /* Et le nom de la source, décortiqué : c'est là qu'on a déjà lu « objects ». */
+    console.log("\n  -- LA COUCHE, LUE DANS LE NOM DE LA SOURCE --");
+    const parCouche = {};
+    l.l.forEach(function (m) {
+      const n = String(m.source || m.nom);
+      const c = (n.match(/instance-\d+-([a-z]+)/) || [])[1] || "(illisible)";
+      parCouche[c] = parCouche[c] || { w1: 0, w0: 0 };
+      if (m.w === 1) { parCouche[c].w1++; } else { parCouche[c].w0++; }
+    });
+    Object.keys(parCouche).forEach(function (c) {
+      console.log("    couche « " + c + " »   w=1 : " + parCouche[c].w1 +
+        "   w=0 : " + parCouche[c].w0);
+    });
+
+    await driver.executeScript(
+      "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+      " type: 'horspage', actif: true }, location.origin);");
+    releve("quiquoi-mj.json", l);
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+
+/* ---------- LA CHAÎNE D'ASCENDANCE D'UN TAMPON ----------
+ *
+ * Chez le MJ, Roll20 met w = 1 aux maillages de la couche CARTE et w = 0 à ceux
+ * de la couche des jetons. Pour reproduire sa règle au lieu de l'écraser, il
+ * faut savoir à quoi se raccrocher : le nom de la source suffit-il, ou faut-il
+ * remonter les parents ? On relève la chaîne entière, et on regarde.
+ */
+async function chaineDuTampon() {
+  const quelle = (process.argv[3] || "mj").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { return 1; }
+    if (!(await attendPont(driver, 50))) { return 1; }
+    await dors(15000);
+    /* LE MODULE ÉTEINT : sinon on lit NOS zéros et non ceux de Roll20. */
+    await driver.executeScript(
+      "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+      " type: 'horspage', actif: false }, location.origin);");
+    await dors(3000);
+    const l = await driver.executeScript([
+      "var S = window.MeshScene, out = [];",
+      "function chaine(m) {",
+      "  var c = [], n = m, k = 0;",
+      "  while (n && k < 8) { c.push(String(n.name || '?').slice(0, 40)); n = n.parent; k++; }",
+      "  return c;",
+      "}",
+      "function decris(m, src) {",
+      "  var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (!b) { return; }",
+      "  out.push({ w: b.w, chaine: chaine(m),",
+      "    src: src ? String(src.name || '').slice(0, 40) : null });",
+      "}",
+      "S.meshes.forEach(function (m) {",
+      "  decris(m, null);",
+      "  (m.instances || []).forEach(function (i) { decris(i, m); });",
+      "});",
+      "return out;"
+    ].join("\n"));
+    console.log("\n  " + l.length + " tampons\n");
+    l.forEach(function (m) {
+      console.log("  w=" + m.w + "   " + m.chaine.join("  <  "));
+      if (m.src) { console.log("        source : " + m.src); }
+    });
+    releve("chaine-" + quelle + ".json", l);
+    await driver.executeScript(
+      "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+      " type: 'horspage', actif: true }, location.origin);");
+    return 0;
+  } finally { await dors(600); await driver.quit().catch(() => {}); }
 }
 
 /* ---------- reconnaissance ---------- */
@@ -17287,7 +18550,7 @@ async function loupe(spec) {
                    loupe: () => loupe(arg), suivi, derive,
                    densite: () => densite(arg), familles: () => familles(arg),
                    cout: () => cout(arg), shader: () => shader(arg),
-                   essai: () => essaiShader(arg), frustum: () => frustum(arg), veille: () => veille(arg), reperes: () => reperes(arg), cadres, pese: () => pese(arg), marqueurs, marqueur: () => poseMarqueur(arg), perso: marqueurPerso, rendu: rendudesMarqueurs, faits: faitsMarqueurs, ui: uiMarqueurs, code: codeMarqueurs, injecte: injecteMarqueur, image: () => imageEtrangere(arg), place: placeMarqueurs, pas: pasMarqueurs, rangee: rangeeMarqueurs, qui, etat: etatMarqueurs, fond: fondMarqueurs, colle: colleMarqueur, voir: voirMarqueurs, menu: menuMarqueurs, choix: choixMarqueurs, poser: poserMarqueur, partage: partageMarqueurs, cycle: cycleDocument, vrai: vraiPartage, fusion: fusionRoll20, tot: fusionTot, outils: barreRoll20, theme: themeRoll20, vttk: sectionVTTK, manque: manqueEtEtiquette, source: sourceMarqueurs, rangee2: rangeeOccupation, reduction: loiReduction, complete: rangeeComplete, nettoie: nettoieTokens, cas: casCapture, reel: etatReel, compteur: compteurRoll20, chiffre: chiffreRoll20, pixels: chiffrePixels, compte: quiCompte, pro: paletteProfessionnelle, gestes: gestesPalette, rame: pourquoiCaRame, cran: coutDunCran, gel: gelDifferre, coupable: quiGele, lourd: zoomLourd, travail: quiTravaille, crans: cranParCran, cible: cibleMolette, long: gesteLong, camseule: cameraSeule, salut: salutParties, audit: auditJoueur, epreuve: epreuveJoueur, bascule: basculeControle, selection: ouEstLaSelection, modes: deuxModes, ecart: ecartDesFenetres, pastilles: deuxPastilles, chat: zoneDeChat, destinataire: ligneDestinataire, largeur: largeurDuChat, aligne: aligneDuChat, emoji: emojisDuChat, fluide: fluiditeDuZoom, ouca: ouEstLeCout, appel: quelAppelCoute, abonne: abonnementCoupable, garde: gardeDeLaCamera, style: styleDeRoll20, surfaces: surfacesVTTK, couche: coucheHorsCarte, cout2: coutDeLaVoie2, preuve: preuveVoie2, dessine: estIlDessine, portee: porteeDuBoard, cadre2: cadreHorsPage, combien: combienDePixels, mord: leLevierMord, surete: sureteDuLevier, nuanceur: litLeNuanceur, ehp: epreuveHorsPage, acces: accesJoueur, campagnes: listeDesCampagnes, version: versionDeRoll20, essaichat: essaiDuChat, ancien: ancienMoteur, zoomancien: zoomAncien, reperes2: reperesHeritage, commande: quiCommandeLeZoom, pasancien: pasDeLancien, tablo: tableauDeBordAncien, porte: porteDuZoom, borne: borneDeLancien, srczoom: sourceDuZoom, zh: epreuveZoomHerite, boucle: battementAncien, marqh: marqueursHeritage, vue: vueHeritage, loi: loiDeLaRangee, emh: epreuveMarqueursHerites, grh: grilleHeritage, srcg: sourceDeLaGrille, dg: drawGridChezNous, egh: epreuveGrilleHeritee, jg: jumpgateSansRegression, coutp: coutDesPeintres, proto: protocoleApresGardes };
+                   essai: () => essaiShader(arg), frustum: () => frustum(arg), veille: () => veille(arg), reperes: () => reperes(arg), cadres, pese: () => pese(arg), marqueurs, marqueur: () => poseMarqueur(arg), perso: marqueurPerso, rendu: rendudesMarqueurs, faits: faitsMarqueurs, ui: uiMarqueurs, code: codeMarqueurs, injecte: injecteMarqueur, image: () => imageEtrangere(arg), place: placeMarqueurs, pas: pasMarqueurs, rangee: rangeeMarqueurs, qui, etat: etatMarqueurs, fond: fondMarqueurs, colle: colleMarqueur, voir: voirMarqueurs, menu: menuMarqueurs, choix: choixMarqueurs, poser: poserMarqueur, partage: partageMarqueurs, cycle: cycleDocument, vrai: vraiPartage, fusion: fusionRoll20, tot: fusionTot, outils: barreRoll20, theme: themeRoll20, vttk: sectionVTTK, manque: manqueEtEtiquette, source: sourceMarqueurs, rangee2: rangeeOccupation, reduction: loiReduction, complete: rangeeComplete, nettoie: nettoieTokens, cas: casCapture, reel: etatReel, compteur: compteurRoll20, chiffre: chiffreRoll20, pixels: chiffrePixels, compte: quiCompte, pro: paletteProfessionnelle, gestes: gestesPalette, rame: pourquoiCaRame, cran: coutDunCran, gel: gelDifferre, coupable: quiGele, lourd: zoomLourd, travail: quiTravaille, crans: cranParCran, cible: cibleMolette, long: gesteLong, camseule: cameraSeule, salut: salutParties, audit: auditJoueur, epreuve: epreuveJoueur, bascule: basculeControle, selection: ouEstLaSelection, modes: deuxModes, ecart: ecartDesFenetres, pastilles: deuxPastilles, chat: zoneDeChat, destinataire: ligneDestinataire, largeur: largeurDuChat, aligne: aligneDuChat, emoji: emojisDuChat, fluide: fluiditeDuZoom, ouca: ouEstLeCout, appel: quelAppelCoute, abonne: abonnementCoupable, garde: gardeDeLaCamera, style: styleDeRoll20, surfaces: surfacesVTTK, couche: coucheHorsCarte, cout2: coutDeLaVoie2, preuve: preuveVoie2, dessine: estIlDessine, portee: porteeDuBoard, cadre2: cadreHorsPage, combien: combienDePixels, mord: leLevierMord, surete: sureteDuLevier, nuanceur: litLeNuanceur, ehp: epreuveHorsPage, voile: leVoile, clignote: leClignotement, declenche: quiDeclencheLaReecriture, scenepage: laSceneSurvit, couthp: coutHorsPage, bord: effetDeBord, quiquoi: quiEstQuoi, chaine: chaineDuTampon, acces: accesJoueur, campagnes: listeDesCampagnes, version: versionDeRoll20, essaichat: essaiDuChat, ancien: ancienMoteur, zoomancien: zoomAncien, reperes2: reperesHeritage, commande: quiCommandeLeZoom, pasancien: pasDeLancien, tablo: tableauDeBordAncien, porte: porteDuZoom, borne: borneDeLancien, srczoom: sourceDuZoom, zh: epreuveZoomHerite, boucle: battementAncien, marqh: marqueursHeritage, vue: vueHeritage, loi: loiDeLaRangee, emh: epreuveMarqueursHerites, grh: grilleHeritage, srcg: sourceDeLaGrille, dg: drawGridChezNous, egh: epreuveGrilleHeritee, jg: jumpgateSansRegression, coutp: coutDesPeintres, proto: protocoleApresGardes };
   const f = routes[commande];
   if (!f) {
     console.log("Commandes : connexion | session | recon | js \"<code>\" | journal | zoom");
