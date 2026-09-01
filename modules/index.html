@@ -396,6 +396,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#tokens-off-the-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tokens off the map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#chat-footer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -481,7 +492,7 @@
 
 
 <h1 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h1>
-<p>Four tools, each with its own switch in the <strong>VTTK</strong> section of the toolbar.</p>
+<p>Five tools, each with its own switch in the <strong>VTTK</strong> section of the toolbar.</p>
 <div class="vttk-modules">
 <div class="vttk-module">
 <h3 id="zoom-range">Zoom range<a class="headerlink" href="#zoom-range" title="Permanent link">&para;</a></h3>
@@ -507,6 +518,19 @@ draws it for everyone.</p>
 reorderable by drag.</p>
 </div>
 <div class="vttk-module">
+<h3 id="tokens-off-the-map">Tokens off the map<a class="headerlink" href="#tokens-off-the-map" title="Permanent link">&para;</a></h3>
+<p>Move a token past the edge of the page and, as a player, you stop seeing it. The
+GM still does. This is in Roll20's shader: fragments outside the page are
+discarded unless the GM flag is set.</p>
+<p>This module sets that flag. The token comes back, drawn at half opacity — that
+is Roll20's own treatment of anything off the page, and it tells you at a glance
+that the token is outside.</p>
+<p>The flag is read in exactly one place in the shader, the edge test. It reveals
+nothing else, and nothing the server has not already sent to your client. For a
+GM the module does nothing at all.</p>
+<p>Jumpgate only. The legacy renderer has no shader and never hid these tokens.</p>
+</div>
+<div class="vttk-module">
 <h3 id="chat-footer">Chat footer<a class="headerlink" href="#chat-footer" title="Permanent link">&para;</a></h3>
 <p>Fixes the vertical alignment of the bottom row, where the sender select and the
 Send button sat at different heights. Adds an emoji picker.</p>
@@ -517,8 +541,9 @@ them.</p>
 <h2 id="roll20s-two-renderers">Roll20's two renderers<a class="headerlink" href="#roll20s-two-renderers" title="Permanent link">&para;</a></h2>
 <p>Roll20 runs two rendering engines behind the same interface: the current one
 (Jumpgate) and the legacy one, still used by older campaigns.</p>
-<p>All four tools work on both, as GM and as player. Each combination was tested on
-a live game.</p>
+<p>Four of the five tools work on both, as GM and as player. Each combination was
+tested on a live game. Tokens off the map is the exception: the legacy renderer
+never hid them, so there is nothing for it to do there and it says so.</p>
 <h2 id="cost">Cost<a class="headerlink" href="#cost" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
