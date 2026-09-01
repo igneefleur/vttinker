@@ -67,6 +67,7 @@ var VTT_MOTS = {
     "mod.zoom":        "Zoom range",
     "mod.grille":      "Grid beyond the page",
     "mod.marqueurs":   "Custom markers",
+    "mod.horsPage":    "Tokens off the map",
     "mod.chat":        "Chat footer",
 
     /* ---------- les réglages ---------- */
@@ -159,6 +160,7 @@ var VTT_MOTS = {
     "mod.zoom":        "Bornes du zoom",
     "mod.grille":      "Grille hors carte",
     "mod.marqueurs":   "Marqueurs personnalisés",
+    "mod.horsPage":    "Jetons hors carte",
     "mod.chat":        "Pied de chat",
 
     "reg.zoomMin":     "Minimum",

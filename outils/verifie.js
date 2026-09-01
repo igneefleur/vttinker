@@ -1239,7 +1239,8 @@ function monteContenu(bus, stock) {
    * suivre le manifeste. */
   ["commun/000-navigateur.js", "commun/langue.js", "commun/catalogue.js", "commun/marqueurs.js", "commun/emojis.js",
    "contenu/000-socle.js", "contenu/modules/zoom.js", "contenu/modules/grille.js",
-   "contenu/modules/marqueurs.js", "contenu/modules/chat.js", "contenu/999-demarrage.js"]
+   "contenu/modules/marqueurs.js", "contenu/modules/horspage.js", "contenu/modules/chat.js",
+   "contenu/999-demarrage.js"]
     .forEach(function (f) { vm.runInContext(lis(f), ctx, { filename: f }); });
   return { ctx, postes, stock, changeurs };
 }
@@ -4980,6 +4981,148 @@ function essaiHuitDefauts() {
   egal("le manifeste et package.json portent la même version", paquet.version, man.version);
 }
 
+/* ============================================================
+ * 15. LES JETONS, VISIBLES HORS DE LA CARTE
+ * ============================================================
+ *
+ * Ce module tient à un seul chiffre — le z de `u_Board` — et toute l'enquête qui
+ * l'a produit a buté sur la MÊME erreur, cinq fois : écrire ce z sur le maillage
+ * SOURCE, qui ne porte que la valeur du modèle, au lieu de l'écrire sur chaque
+ * INSTANCE, seule à finir sur la carte graphique. Cinq mesures ont conclu « le
+ * levier ne mord pas ».
+ *
+ * Une régression qui reviendrait à n'écrire que sur la source ne se verrait
+ * NULLE PART : la fonction rendrait toujours ok, le compte rendu annoncerait
+ * toujours des tampons posés, et seul un joueur devant sa page s'apercevrait que
+ * rien n'a changé. C'est exactement ce qu'un banc doit attraper, et c'est ce que
+ * ce bloc éprouve.
+ *
+ * Il éprouve aussi les deux autres promesses : que l'extinction rende à Roll20
+ * SA règle (et non zéro, ce qui priverait un MJ de ce qu'il voyait avant), et
+ * que le guet repasse quand Roll20 réécrit le tampon dans notre dos — ce qu'il
+ * fait, à des occasions qui lui appartiennent.
+ */
+function faisTampon(z) {
+  return { x: 1750, y: 1750, z: z, w: 1 };
+}
+
+/* Un maillage source et ses instances, comme Roll20 les range : les instances
+ * portent CHACUNE leur tampon, et c'est là que tout se joue. */
+function faisJetons(z) {
+  const source = { name: "instance-0-objects - 0_group_0", instancedBuffers: { u_Board: faisTampon(0) } };
+  source.instances = [1, 2, 3].map(function (i) {
+    return { name: "instance- /images/character" + i + ".png",
+             sourceMesh: source, instancedBuffers: { u_Board: faisTampon(z) } };
+  });
+  return source;
+}
+
+async function essaiHorsPage() {
+  titre("15. Les jetons, visibles hors de la carte");
+
+  /* ---------- CE QUE LE PRODUIT DÉCLARE ---------- */
+  const cat = lis("commun/catalogue.js");
+  verifie("le catalogue porte le module « horsPage »", /id:\s*"horsPage"/.test(cat));
+  const lang = lis("commun/langue.js");
+  egal("  et il est nommé dans les deux langues",
+    (lang.match(/"mod\.horsPage"/g) || []).length, 2);
+  const man = JSON.parse(lis("manifest.json"));
+  const js = man.content_scripts[0].js;
+  verifie("  le manifeste le livre", js.indexOf("contenu/modules/horspage.js") >= 0);
+  verifie("  et APRÈS le socle, qui porte VTT.module",
+    js.indexOf("contenu/modules/horspage.js") > js.indexOf("contenu/000-socle.js"));
+
+  /* L'IDENTIFIANT DU MODULE EST CELUI DU CATALOGUE, AU CARACTÈRE PRÈS. Un écart
+   * de casse — « horspage » au lieu de « horsPage » — ne lèverait aucune erreur :
+   * le socle chercherait simplement un réglage qui n'existe pas, et le module ne
+   * démarrerait jamais. En silence. */
+  const modSrc = lis("contenu/modules/horspage.js");
+  verifie("  et le module s'enregistre sous l'identifiant du catalogue",
+    /id:\s*"horsPage"/.test(modSrc));
+
+  /* ---------- CE QU'IL FAIT, DANS UN MONDE QUI RESSEMBLE AU VRAI ---------- */
+  const bus = faisBus();
+  const r20 = faisRoll20(false);
+  const jetons = faisJetons(0);
+  r20.scene.meshes.push(jetons);
+  r20.scene.metadata = { gmMode: false };
+  montePont(bus, r20);
+
+  let rep = null;
+  bus.ecoute(null, (ev) => { if (ev.data && ev.data.type === "horspage-resultat") { rep = ev.data; } });
+
+  function zDesInstances() { return jetons.instances.map(function (i) { return i.instancedBuffers.u_Board.z; }); }
+
+  bus.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: true });
+  await attends(60);
+  verifie("le pont accepte la pose", !!rep && rep.ok === true, JSON.stringify(rep));
+  egal("  il compte les quatre tampons (une source et trois instances)", rep && rep.tampons, 4);
+
+  /* LA MESURE QUI COMPTE. */
+  egal("  et il écrit sur CHAQUE INSTANCE, pas seulement sur la source",
+    JSON.stringify(zDesInstances()), JSON.stringify([1, 1, 1]));
+  egal("  la source aussi, pour les instances à venir", jetons.instancedBuffers.u_Board.z, 1);
+
+  /* w NE BOUGE PAS. C'est lui qui commande si le test hors page a lieu ; le
+   * mettre à zéro éteindrait le test entier au lieu d'en corriger une branche,
+   * et supprimerait la demi-opacité que Roll20 applique hors page. */
+  egal("  et il ne touche pas à w", jetons.instances[0].instancedBuffers.u_Board.w, 1);
+
+  /* ---------- LE GUET REPASSE ---------- */
+  jetons.instances[1].instancedBuffers.u_Board = faisTampon(0);
+  await attends(700);
+  egal("Roll20 réécrit un tampon : le guet le repose",
+    JSON.stringify(zDesInstances()), JSON.stringify([1, 1, 1]));
+
+  /* ---------- L'EXTINCTION REND SA RÈGLE À ROLL20 ---------- */
+  rep = null;
+  bus.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: false });
+  await attends(60);
+  verifie("le pont accepte l'extinction", !!rep && rep.ok === true, JSON.stringify(rep));
+  egal("  et le joueur retrouve exactement ce que Roll20 lui donnait",
+    JSON.stringify(zDesInstances()), JSON.stringify([0, 0, 0]));
+
+  /* ET LE GUET S'ARRÊTE POUR DE BON : un intervalle qui survit à l'extinction
+   * reposerait le levier une demi-seconde plus tard, et le module serait
+   * ineffaçable. */
+  jetons.instances[0].instancedBuffers.u_Board.z = 0;
+  await attends(700);
+  egal("  le guet est bien arrêté", zDesInstances()[0], 0);
+
+  /* ---------- CHEZ LE MJ, ÉTEINDRE NE LUI PREND RIEN ---------- */
+  const bus2 = faisBus();
+  const r20b = faisRoll20(false);
+  const mj = faisJetons(1);
+  r20b.scene.meshes.push(mj);
+  r20b.scene.metadata = { gmMode: true };
+  montePont(bus2, r20b);
+  bus2.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: true });
+  await attends(60);
+  bus2.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: false });
+  await attends(60);
+  egal("le MJ éteint le module et garde son drapeau",
+    JSON.stringify(mj.instances.map(function (i) { return i.instancedBuffers.u_Board.z; })),
+    JSON.stringify([1, 1, 1]));
+
+  /* ---------- SANS SCÈNE, IL LE DIT AU LIEU DE SE CROIRE POSÉ ----------
+   *
+   * La scène Babylon se monte APRÈS la page. Répondre « ok » à un moment où il
+   * n'y a rien à écrire arrêterait les tentatives du module, et il resterait
+   * allumé sans effet — c'est la panne qu'avait eue la grille, mot pour mot. */
+  const bus3 = faisBus();
+  const r20c = faisRoll20(false);
+  /* La scène EXISTE — c'est elle qui décide du moteur — mais elle n'a pas encore
+   * ses maillages. C'est l'état réel des premières secondes d'une partie. */
+  r20c.scene.meshes = null;
+  montePont(bus3, r20c);
+  let rep3 = null;
+  bus3.ecoute(null, (ev) => { if (ev.data && ev.data.type === "horspage-resultat") { rep3 = ev.data; } });
+  bus3.poste({ ns: "vttinker", depuis: "contenu", type: "horspage", actif: true });
+  await attends(60);
+  verifie("sans scène, il répond un échec nommé",
+    !!rep3 && rep3.ok === false && rep3.raison === "scene-absente", JSON.stringify(rep3));
+}
+
 /* ============================================================ */
 
 (async function () {
@@ -4997,6 +5140,7 @@ function essaiHuitDefauts() {
   essaiHeritagePeint();
   essaiOrigine();
   essaiBoutonColonne();
+  await essaiHorsPage();
   essaiHuitDefauts();
 
   console.log("\n" + (echecs ? "ÉCHEC — " + echecs + " sur " + total : "Tout passe — " + total + " contrôles"));

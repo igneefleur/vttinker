@@ -4,13 +4,13 @@ hide:
 ---
 
 <div class="vttk-banniere" markdown>
-<span class="vttk-version">version 0.51.0</span>
+<span class="vttk-version">version 0.52.0</span>
 
 # VTTinker
 
 A browser extension for Roll20. It raises the zoom limits, draws the grid past
-the map edge, lets you add your own token markers, and fixes the chat footer.
-Each tool has its own on/off switch.
+the map edge, lets you add your own token markers, shows tokens moved off the
+map, and fixes the chat footer. Each tool has its own on/off switch.
 </div>
 
 <div class="vttk-paquets" markdown>

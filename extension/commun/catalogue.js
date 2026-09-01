@@ -116,6 +116,23 @@ var VTT_CATALOGUE = [
   },
 
   {
+    id: "horsPage",
+    nom: "mod.horsPage",
+    defaut: true,
+    portee: "editeur",
+    /* AUCUN RÉGLAGE : il n'y a rien à doser. Le nuanceur de Roll20 jette ou ne
+     * jette pas ce qui déborde de la page, et le module retire ce rejet. Un
+     * curseur n'aurait aucune position intermédiaire à offrir.
+     *
+     * CHEZ LE MJ, IL NE FAIT RIEN. Roll20 lui donne déjà le drapeau que ce
+     * module pose ; l'allumer ou l'éteindre ne change pas un pixel de son écran.
+     * Il reste visible dans la liste pour la même raison que les autres : une
+     * case qui disparaît selon le rôle est une case dont on se demande où elle
+     * est passée. */
+    reglages: []
+  },
+
+  {
     id: "chat",
     nom: "mod.chat",
     defaut: true,

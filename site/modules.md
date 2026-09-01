@@ -1,6 +1,6 @@
 # Features
 
-Four tools, each with its own switch in the **VTTK** section of the toolbar.
+Five tools, each with its own switch in the **VTTK** section of the toolbar.
 
 <div class="vttk-modules" markdown>
 
@@ -38,6 +38,24 @@ reorderable by drag.
 </div>
 
 <div class="vttk-module" markdown>
+### Tokens off the map
+
+Move a token past the edge of the page and, as a player, you stop seeing it. The
+GM still does. This is in Roll20's shader: fragments outside the page are
+discarded unless the GM flag is set.
+
+This module sets that flag. The token comes back, drawn at half opacity — that
+is Roll20's own treatment of anything off the page, and it tells you at a glance
+that the token is outside.
+
+The flag is read in exactly one place in the shader, the edge test. It reveals
+nothing else, and nothing the server has not already sent to your client. For a
+GM the module does nothing at all.
+
+Jumpgate only. The legacy renderer has no shader and never hid these tokens.
+</div>
+
+<div class="vttk-module" markdown>
 ### Chat footer
 
 Fixes the vertical alignment of the bottom row, where the sender select and the
@@ -54,8 +72,9 @@ them.
 Roll20 runs two rendering engines behind the same interface: the current one
 (Jumpgate) and the legacy one, still used by older campaigns.
 
-All four tools work on both, as GM and as player. Each combination was tested on
-a live game.
+Four of the five tools work on both, as GM and as player. Each combination was
+tested on a live game. Tokens off the map is the exception: the legacy renderer
+never hid them, so there is nothing for it to do there and it says so.
 
 ## Cost
 

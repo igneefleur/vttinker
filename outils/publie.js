@@ -65,13 +65,23 @@ function main() {
    * doit pas changer à chaque publication, sinon tout lien partagé meurt. Le
    * numéro reste dans dist/, pour l'archive. */
   console.log("\n  ---------- ce que la page offre ----------");
+  /* ON PREND CELUI DE LA VERSION QU'ON PUBLIE, ET PAS LE PREMIER VENU.
+   *
+   * Le tri était celui du répertoire, donc l'ordre alphabétique, donc
+   * « …-0.51.0.xpi » AVANT « …-0.52.0.xpi ». dist/ garde toutes les signatures :
+   * à la deuxième publication, la page aurait offert l'ANCIENNE extension à côté
+   * du zip Chrome tout neuf — deux navigateurs, deux versions, et rien pour le
+   * dire. Le nom du fichier porte le numéro ; on s'en sert. */
   const xpi = fs.existsSync(DIST)
-    ? fs.readdirSync(DIST).filter(function (f) { return /\.xpi$/.test(f); })
+    ? fs.readdirSync(DIST).filter(function (f) {
+        return f.slice(-4) === ".xpi" && f.indexOf("-" + m.version + ".xpi") > 0;
+      })
     : [];
   if (!xpi.length) {
-    console.log("\n  AUCUN .xpi SIGNÉ dans dist/.");
+    console.log("\n  AUCUN .xpi SIGNÉ EN " + m.version + " dans dist/.");
     console.log("");
-    console.log("  On ne publie pas une page dont le bouton principal rend une erreur.");
+    console.log("  On ne publie pas une page dont le bouton principal rend une erreur,");
+    console.log("  ni une page qui offrirait une version que le reste ne porte pas.");
     console.log("  Signe d'abord :   node outils/signe.js");
     return 1;
   }

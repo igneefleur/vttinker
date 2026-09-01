@@ -2903,6 +2903,140 @@
   }
 
   /* ============================================================
+   *              LES JETONS, VISIBLES HORS DE LA CARTE
+   * ============================================================
+   *
+   * Un joueur qui pose un jeton à côté de la page ne le voit plus. Le MJ, lui,
+   * le voit. Ce n'est ni un bogue d'affichage ni une histoire de caméra : c'est
+   * écrit dans le nuanceur de Roll20, et Roll20 le dit lui-même.
+   *
+   * ---------- LE NUANCEUR, LU DANS LE PROGRAMME COMPILÉ ----------
+   *
+   * Chaque image de jeton est une instance d'un même maillage, et porte un
+   * attribut d'instance `u_Board`. Le sommet le découpe :
+   *
+   *     in  vec4  u_Board;
+   *     out vec3  v_Board;      v_Board    = u_Board.xyz;
+   *     out float v_Offboard;   v_Offboard = u_Board.w;
+   *
+   * et le fragment s'en sert exactement deux fois :
+   *
+   *     if (v_Offboard == 1.) {
+   *       offBoard = vPositionW.x < 0. || vPositionW.x > v_Board.x
+   *               || vPositionW.y > 0. || vPositionW.y < -v_Board.y;
+   *       if (offBoard && v_Board.z == 0.) {
+   *         // Players can skip the rest of the shader for a little performance boost.
+   *         discard;
+   *         return;
+   *       }
+   *     }
+   *     ...
+   *     if (offBoard && v_GridAlign != 1.0) { glFragColor.a *= 0.5; }
+   *
+   * Roll20 remplit ce vecteur ainsi :
+   *
+   *     u_Board = new Vector4(largeur, hauteur, gmMode ? 1 : 0, ...)
+   *
+   * Le z est donc le drapeau « je suis le MJ », et le joueur reçoit z = 0. Tout
+   * ce qui déborde de la page est jeté avant même d'être texturé — le
+   * commentaire de Roll20 présente d'ailleurs la chose comme une économie.
+   *
+   * ---------- CE QUE FAIT CE MODULE, ET RIEN DE PLUS ----------
+   *
+   * Il pose z = 1 sur les attributs d'instance. Le fragment n'est plus jeté, et
+   * la ligne suivante s'applique : hors page, Roll20 dessine à DEMI-OPACITÉ.
+   * C'est sa propre mécanique, et elle est bienvenue — le jeton se voit, et l'on
+   * sait au premier regard qu'il est dehors.
+   *
+   * IL NE TOUCHE PAS À w. C'est w qui commande si le test a lieu ; le MJ, lui, a
+   * w = 0 et voit à pleine opacité. Le mettre à zéro marcherait aussi, mais ce
+   * serait éteindre le test entier pour n'en corriger qu'une branche.
+   *
+   * ---------- CE QU'IL NE RÉVÈLE PAS ----------
+   *
+   * z ne paraît qu'à cette ligne-là dans tout le programme — vérifié sur la
+   * source compilée, pas sur une lecture du paquet minifié. Il ne commande
+   * aucune couche, aucune visibilité, aucun brouillard. Mesuré par ailleurs :
+   * levier posé, tant que rien ne déborde de la page, l'écran ne change pas d'un
+   * pixel (0 sur 0 de bruit de fond, dans les deux parties d'essai).
+   *
+   * Autrement dit, il montre au joueur SES propres jetons là où il les a mis. Il
+   * ne lui donne rien que le serveur ne lui ait déjà envoyé.
+   *
+   * ---------- POURQUOI UN GUET, ET PAS UNE POSE ----------
+   *
+   * Roll20 réécrit `u_Board` par un `new Vector4(...)`, à des occasions qui lui
+   * appartiennent — changement de page, de couche, arrivée d'un jeton. Poser une
+   * fois ne tient donc pas. On repasse, et l'on ne repasse que ce qui est
+   * retombé à zéro : le parcours est celui des maillages de la scène, quelques
+   * dizaines, une fois par demi-seconde.
+   *
+   * ---------- L'ANCIEN MOTEUR N'EN A PAS BESOIN ----------
+   *
+   * Fabric n'a pas de nuanceur, pas d'attribut d'instance, et ne jette rien au
+   * bord de la page : le module s'y déclare sans objet plutôt que d'échouer.
+   */
+
+  var HP_PAS = 500;
+  var hpGuet = null;
+  var hpPose = false;
+
+  /* Le parcours, et il rend ce qu'il a trouvé pour que le compte rendu ne soit
+   * pas une supposition. `instances` est la liste des instances matérielles d'un
+   * maillage ; chacune porte SON tampon, et c'est là que tout se joue — écrire
+   * sur le seul maillage source ne pose que la valeur du modèle. */
+  function hpApplique(z) {
+    var S = window.MeshScene;
+    if (!S || !S.meshes) { return { ok: false, raison: "scene-absente" }; }
+    var vus = 0, poses = 0;
+    function pose(m) {
+      var b = m && m.instancedBuffers && m.instancedBuffers.u_Board;
+      if (!b) { return; }
+      vus++;
+      if (b.z === z) { return; }
+      b.z = z;
+      poses++;
+    }
+    S.meshes.forEach(function (m) {
+      pose(m);
+      var l = m.instances;
+      if (!l) { return; }
+      for (var i = 0; i < l.length; i++) { pose(l[i]); }
+    });
+    return { ok: true, tampons: vus, poses: poses };
+  }
+
+  /* CE QUE ROLL20 AURAIT MIS. À l'extinction on ne remet pas « zéro » : on remet
+   * SA règle, lue sur la scène. Un MJ qui éteint le module ne doit pas y perdre
+   * ce qu'il voyait avant de l'allumer. */
+  function hpSonZ() {
+    var S = window.MeshScene;
+    try { return (S && S.metadata && S.metadata.gmMode) ? 1 : 0; } catch (e) { return 0; }
+  }
+
+  function hpInstalle() {
+    if (surLancienMoteur()) {
+      return { ok: true, sansObjet: true, moteur: "heritage" };
+    }
+    var r = hpApplique(1);
+    if (!r.ok) { return r; }
+    hpPose = true;
+    if (hpGuet) { clearInterval(hpGuet); }
+    hpGuet = setInterval(function () {
+      try { if (hpPose) { hpApplique(1); } } catch (e) {}
+    }, HP_PAS);
+    return { ok: true, tampons: r.tampons, poses: r.poses, pas: HP_PAS };
+  }
+
+  function hpRetire() {
+    if (hpGuet) { clearInterval(hpGuet); hpGuet = null; }
+    if (!hpPose) { return { ok: true, rendu: 0 }; }
+    hpPose = false;
+    var r = hpApplique(hpSonZ());
+    return { ok: true, rendu: r.ok ? r.poses : 0, tampons: r.tampons || 0 };
+  }
+
+  /* ============================================================
    *                  LES MARQUEURS PERSONNALISÉS
    * ============================================================
    *
@@ -6782,6 +6916,12 @@
           return;
         }
         planifiePose(d.cases);
+        return;
+      }
+      if (d.type === "horspage") {
+        var rp = (d.actif === false) ? hpRetire() : hpInstalle();
+        rp.type = "horspage-resultat";
+        repond(ev, rp);
         return;
       }
       if (d.type === "chat") {

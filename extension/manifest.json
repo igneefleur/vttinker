@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VTTinker",
-  "version": "0.51.0",
+  "version": "0.52.0",
   "description": "Outils pour Roll20 : de petites et de grandes retouches, activables une par une.",
   "browser_specific_settings": {
     "gecko": {
@@ -39,6 +39,7 @@
         "contenu/modules/zoom.js",
         "contenu/modules/grille.js",
         "contenu/modules/marqueurs.js",
+        "contenu/modules/horspage.js",
         "contenu/modules/chat.js",
         "contenu/999-demarrage.js"
       ],

@@ -7924,6 +7924,1171 @@ async function protocoleApresGardes() {
   }
 }
 
+/* ---------- LE JETON HORS PAGE EST-IL SEULEMENT DESSINÉ ? ----------
+ *
+ * Cinq leviers de nuanceur essayés, aucun pixel. On a écrit dans le tableau
+ * réellement téléversé, on l'a poussé, on a basculé « gmMode », on a dégelé les
+ * matériaux : rien. Et pourtant le nuanceur, lu dans sa source, dit bien
+ * « if (offBoard && v_Board.z == 0.) discard; ».
+ *
+ * TOUTE CETTE ENQUÊTE SUPPOSE QUE LE JETON EST DESSINÉ PUIS JETÉ. Personne ne
+ * l'a vérifié. S'il n'est pas soumis du tout — instance désactivée, retirée de
+ * la scène, écartée par le tronc de vue, ou jamais créée — alors aucun levier
+ * de nuanceur ne pouvait mordre, et l'on a cherché cinq fois au mauvais endroit.
+ *
+ * C'est LA question, et elle se pose avant toutes les autres. On relève l'état
+ * du maillage du même jeton, dedans puis dehors, sans rien toucher.
+ */
+async function estIlDessine() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    const LIS = [
+      "var S = window.MeshScene;",
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "var t = g[arguments[0]];",
+      "if (!S || !t) { return { erreur: 'pas de scene ou pas de jeton' }; }",
+      "/* On retrouve TOUT ce qui porte l'identifiant du jeton, sans supposer",
+      "   qu'il n'y en a qu'un ni où il est rangé. */",
+      "var siens = [];",
+      "S.meshes.forEach(function (m) {",
+      "  var n = String(m.name || '');",
+      "  if (n.indexOf(t.id) < 0) { return; }",
+      "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  siens.push({",
+      "    nom: n.slice(0, 40),",
+      "    instance: !!m.sourceMesh,",
+      "    actif: (typeof m.isEnabled === 'function') ? m.isEnabled() : null,",
+      "    visible: m.isVisible,",
+      "    visibilite: m.visibility,",
+      "    dansLaScene: S.meshes.indexOf(m) >= 0,",
+      "    groupe: m.renderingGroupId,",
+      "    position: m.position ? [Math.round(m.position.x), Math.round(m.position.y), Math.round(m.position.z)] : null,",
+      "    board: b ? [b.x, b.y, b.z, b.w] : null,",
+      "    /* CE QUI DÉCIDE VRAIMENT DE L'APPEL DE DESSIN. */",
+      "    dansLesActifs: S._activeMeshes ? (S._activeMeshes.indexOf(m) >= 0) : null,",
+      "    toujoursActif: m.alwaysSelectAsActiveMesh,",
+      "    tronqueParLaVue: (typeof m.isInFrustum === 'function' && S.activeCamera)",
+      "      ? !m.isInFrustum(S.activeCamera._frustumPlanes || []) : null",
+      "  });",
+      "});",
+      "/* Et le compte général, pour voir si UN maillage disparaît de la scène. */",
+      "var instances = 0;",
+      "S.meshes.forEach(function (m) { if (m.sourceMesh) { instances++; } });",
+      "return { siens: siens, maillages: S.meshes.length, instances: instances,",
+      "  actifs: S._activeMeshes ? S._activeMeshes.length : null,",
+      "  vueDuJeton: !!(t.view), id: t.id };"
+    ].join("\n");
+
+    /* On choisit un jeton de la couche des jetons, et on note où il était. */
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: g[i].id, x: g[i].get('left'), y: g[i].get('top') };",
+      "  }",
+      "}",
+      "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton : ..." + String(cible.id).slice(-6) + "  en (" + cible.x + ", " + cible.y + ")");
+
+    function montre(titre, r) {
+      console.log("\n  -- " + titre + " --");
+      if (r.erreur) { console.log("    " + r.erreur); return; }
+      console.log("    maillages " + r.maillages + "   instances " + r.instances +
+        "   actifs " + r.actifs);
+      (r.siens || []).forEach(function (m) {
+        console.log("    " + m.nom);
+        console.log("      instance " + m.instance + "  actif " + m.actif +
+          "  visible " + m.visible + "  visibilité " + m.visibilite);
+        console.log("      dans la scène " + m.dansLaScene + "  dans les actifs " + m.dansLesActifs +
+          "  hors du tronc de vue " + m.tronqueParLaVue);
+        console.log("      groupe " + m.groupe + "  position " + JSON.stringify(m.position) +
+          "  u_Board " + JSON.stringify(m.board));
+      });
+      if (!(r.siens || []).length) { console.log("    AUCUN MAILLAGE NE PORTE SON IDENTIFIANT"); }
+    }
+
+    const dedans = await driver.executeScript(LIS, cible.i);
+    montre("DEDANS, tel qu'il est", dedans);
+
+    /* On l'envoie hors de la page, et on relit exactement la même chose. */
+    await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "g[arguments[0]].save({ left: arguments[1], top: -260 });"
+    ].join("\n"), cible.i, cible.x);
+    await dors(3500);
+    const dehors = await driver.executeScript(LIS, cible.i);
+    montre("DEHORS, hors de la page", dehors);
+
+    /* ---------- CE QUE ÇA DÉCIDE ---------- */
+    console.log("\n  ──────────────────────────────────────────────");
+    const a = (dedans.siens || [])[0], b = (dehors.siens || [])[0];
+    if (!b) {
+      console.log("  SON MAILLAGE A DISPARU DE LA SCÈNE.");
+      console.log("  Aucun levier de nuanceur ne pouvait mordre : il n'y a plus rien à dessiner.");
+      console.log("  La voie est de le REMETTRE, pas de changer la façon dont il est peint.");
+    } else if (b.actif === false) {
+      console.log("  SON MAILLAGE EST DÉSACTIVÉ (isEnabled = false).");
+      console.log("  Le levier est setEnabled(true), pas le nuanceur.");
+    } else if (b.dansLesActifs === false && a && a.dansLesActifs === true) {
+      console.log("  IL SORT DE LA LISTE DES MAILLAGES ACTIFS.");
+      console.log("  Le levier est alwaysSelectAsActiveMesh, pas le nuanceur.");
+    } else if (b.visibilite === 0 || b.visible === false) {
+      console.log("  IL EST RENDU INVISIBLE (visibility ou isVisible).");
+    } else {
+      console.log("  IL EST TOUJOURS LÀ, ACTIF ET SOUMIS AU DESSIN.");
+      console.log("  C'est donc bien le nuanceur qui le jette — et le levier est ailleurs");
+      console.log("  que dans u_Board tel qu'on l'a écrit.");
+    }
+
+    /* ON LE REMET. */
+    await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "g[arguments[0]].save({ left: arguments[1], top: arguments[2] });"
+    ].join("\n"), cible.i, cible.x, cible.y);
+    console.log("  jeton remis en (" + cible.x + ", " + cible.y + ")");
+
+    releve("dessine-" + quelle + ".json", { cible: cible, dedans: dedans, dehors: dehors });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- QUI PORTE VRAIMENT u_Board ? ----------
+ *
+ * « dessine » a montré que les trois maillages nommés d'après le jeton ont
+ * u_Board à null et une position nulle : ce ne sont pas eux qu'on dessine.
+ * Roll20 peint par INSTANCIATION — un maillage source partagé, une instance par
+ * jeton — et les cinq leviers essayés écrivaient tous sur la SOURCE. Le relevé
+ * de « preuve » le dit d'ailleurs en toutes lettres : il ne lisait que les
+ * maillages dont le nom commence par « instance- », c'est-à-dire les sources.
+ *
+ * Or Babylon reconstruit le tableau téléversé à partir de `instancedBuffers` de
+ * CHAQUE instance, à chaque image. Écrire sur la source ne pose que la valeur du
+ * modèle, aussitôt recouverte. Le levier, s'il existe, est par instance.
+ *
+ * On relève donc l'arbre complet avant d'y toucher : qui porte le tampon, qui
+ * sont ses instances, et ce que chacune vaut.
+ */
+async function porteeDuBoard() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  const crypto = require("crypto");
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    /* LE MÊME INSTRUMENT QUE « preuve » — la toile entière, son empreinte, aucun
+     * cadrage. Les empreintes se comparent donc d'une épreuve à l'autre. */
+    async function photo(nom) {
+      const t = await driver.executeScript(
+        "var n = document.getElementById('babylonCanvas');" +
+        "if (!n) { return null; }" +
+        "var q = n.getBoundingClientRect();" +
+        "return { x: Math.round(q.left), y: Math.round(q.top)," +
+        "  l: Math.round(q.width), h: Math.round(q.height) };");
+      if (!t) { return null; }
+      const p = await capturePres(driver, nom + ".png", t.x, t.y, t.l, t.h, 1);
+      if (!p) { return null; }
+      return crypto.createHash("sha1").update(fs.readFileSync(p)).digest("hex").slice(0, 12);
+    }
+
+    /* Tout ce qui porte le tampon, source comme instances : on ne suppose pas la
+     * mécanique employée, on la lit. */
+    const ARBRE = [
+      "var S = window.MeshScene; var out = [];",
+      "function lis(m) { var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  return b ? [b.x, b.y, b.z, b.w] : null; }",
+      "S.meshes.forEach(function (m) {",
+      "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  var fines = m.thinInstanceCount || 0;",
+      "  if (!b && !fines) { return; }",
+      "  out.push({",
+      "    nom: String(m.name || '').slice(0, 44),",
+      "    source: !m.sourceMesh,",
+      "    board: lis(m),",
+      "    fines: fines,",
+      "    aDesFines: !!m.hasThinInstances,",
+      "    enfants: (m.instances || []).map(function (i) {",
+      "      return { nom: String(i.name || '').slice(0, 44), board: lis(i),",
+      "               actif: i.isEnabled(), visible: i.isVisible };",
+      "    })",
+      "  });",
+      "});",
+      "return out;"
+    ].join("\n");
+
+    function montreArbre(arbre) {
+      arbre.forEach(function (m) {
+        console.log("\n    " + m.nom + (m.source ? "   [source]" : "   [instance]"));
+        console.log("      u_Board " + JSON.stringify(m.board) +
+          "   instances fines " + m.fines + (m.aDesFines ? " (oui)" : ""));
+        console.log("      instances : " + m.enfants.length);
+        m.enfants.slice(0, 8).forEach(function (i) {
+          console.log("        " + i.nom + "   u_Board " + JSON.stringify(i.board) +
+            "   actif " + i.actif);
+        });
+        if (m.enfants.length > 8) { console.log("        … et " + (m.enfants.length - 8) + " autres"); }
+      });
+      if (!arbre.length) { console.log("    AUCUN maillage ne porte u_Board ni d'instances fines."); }
+    }
+
+    console.log("\n  -- QUI PORTE u_Board, LE JETON ÉTANT EN PLACE --");
+    montreArbre(await driver.executeScript(ARBRE));
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: g[i].id, x: g[i].get('left'), y: g[i].get('top') };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("\n  aucun jeton sur la couche des jetons"); return 1; }
+
+    /* ---------- ET LE MÊME ARBRE, LE JETON ÉTANT DEHORS ----------
+     *
+     * CETTE SONDE NE JUGE PLUS DU LEVIER, et c'est une correction.
+     * Elle le posait puis comparait deux photos prises avec le jeton en
+     * y = -260 — un point qui, au cadrage par défaut, tombe HORS DE L'ÉCRAN.
+     * Les deux empreintes étaient donc identiques quoi qu'il arrive, et son
+     * verdict « le levier ne mord pas » était sans valeur. Le levier mord :
+     * mesuré par « mord », qui dézoome et compte des pixels.
+     *
+     * Ce qu'elle sait faire, et que rien d'autre ne fait, c'est LIRE l'arbre :
+     * quelle source, quelles instances, quel tampon sur chacune. Elle s'en
+     * tient à ça. */
+    await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "g[arguments[0]].save({ left: arguments[1], top: -260 });"
+    ].join("\n"), cible.i, cible.x);
+    await dors(3500);
+
+    console.log("\n  -- QUI PORTE u_Board, LE JETON ÉTANT DEHORS --");
+    const arbreDehors = await driver.executeScript(ARBRE);
+    montreArbre(arbreDehors);
+
+    await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "g[arguments[0]].save({ left: arguments[1], top: arguments[2] });"
+    ].join("\n"), cible.i, cible.x, cible.y);
+    console.log("\n  jeton remis en (" + cible.x + ", " + cible.y + ")");
+    console.log("  Pour savoir si le levier mord :   node outils/pilote.js mord");
+    releve("portee-" + quelle + ".json", { cible: cible, arbreDehors: arbreDehors });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- LE POINT VISÉ EST-IL SEULEMENT À L'ÉCRAN ? ----------
+ *
+ * « horspage » a montré que le jeton posé en (x, -140) ne laisse aucun pixel,
+ * chez le joueur COMME chez le MJ. C'est une mesure propre, avec son témoin.
+ * Elle ne dit pourtant pas encore que Roll20 le cache : si la caméra cadre la
+ * page et rien d'autre, le point visé est hors de l'écran, et un jeton hors de
+ * l'écran ne se dessine nulle part — ce serait vrai de n'importe quel moteur.
+ *
+ * C'est la même faute que celle qu'on vient de réparer : conclure d'une
+ * différence sans avoir établi qu'elle pouvait se voir.
+ *
+ * On projette donc le point visé par la caméra elle-même, et l'on refuse de
+ * conclure tant qu'il n'est pas franchement DANS la toile.
+ */
+async function cadreHorsPage() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  const crypto = require("crypto");
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function photo(nom) {
+      const t = await driver.executeScript(
+        "var n = document.getElementById('babylonCanvas'); if (!n) { return null; }" +
+        "var q = n.getBoundingClientRect();" +
+        "return { x: Math.round(q.left), y: Math.round(q.top)," +
+        "  l: Math.round(q.width), h: Math.round(q.height) };");
+      if (!t) { return null; }
+      const p = await capturePres(driver, nom + ".png", t.x, t.y, t.l, t.h, 1);
+      if (!p) { return null; }
+      return crypto.createHash("sha1").update(fs.readFileSync(p)).digest("hex").slice(0, 12);
+    }
+
+    async function bouge(i, g, h) {
+      await driver.executeScript(
+        "var m = window.Campaign.activePage().thegraphics.models;" +
+        "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
+      await dors(2800);
+    }
+
+    /* OÙ TOMBE UN POINT DE LA PAGE, À L'ÉCRAN ? On le demande à la caméra, par
+     * la projection de Babylon : aucune loi devinée, aucun facteur recopié. Le
+     * repère du monde a son y vers le haut là où la page l'a vers le bas — ce
+     * que le nuanceur dit lui-même, en bornant vPositionW.y entre -hauteur et 0. */
+    /* BABYLON N'EST PAS SUR window SOUS JUMPGATE — Roll20 l'empaquette. On
+     * reprend donc les deux constructeurs sur des objets VIVANTS de la scène :
+     * la position de la caméra est un Vector3, la matrice de transformation une
+     * Matrix. Leurs statiques suivent. */
+    const PROJETTE = [
+      "var S = window.MeshScene;",
+      "var c = S.activeCamera, e = S.getEngine();",
+      "var V3 = c.position.constructor, M = S.getTransformMatrix().constructor;",
+      "var v = c.viewport.toGlobal(e.getRenderWidth(), e.getRenderHeight());",
+      "var p = V3.Project(new V3(arguments[0], -arguments[1], 0),",
+      "  M.Identity(), S.getTransformMatrix(), v);",
+      "return { x: Math.round(p.x), y: Math.round(p.y),",
+      "  l: e.getRenderWidth(), h: e.getRenderHeight() };"
+    ].join("\n");
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "var pg = window.Campaign.activePage();",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top'),",
+      "             page: [pg.get('width') * 70, pg.get('height') * 70] };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")" +
+      "   page " + Math.round(cible.page[0]) + " x " + Math.round(cible.page[1]));
+
+    /* ON DÉZOOME POUR DÉGAGER DE LA MARGE AUTOUR DE LA PAGE. Sans quoi le point
+     * visé est dehors, et l'épreuve ne mesure que le cadrage. */
+    /* Le magasin « engine » de Pinia, atteint comme le pont l'atteint : par la
+     * racine Vue. Il n'y a pas d'autre porte sous Jumpgate — « setZoom » ne vit
+     * ni sur window ni sur d20, et le premier essai s'y est cassé le nez. Son
+     * unité est le POUR CENT. */
+    const dez = await driver.executeScript([
+      "function racines() {",
+      "  var o = [];",
+      "  document.querySelectorAll('*').forEach(function (n) { if (n.__vue_app__) { o.push(n); } });",
+      "  return o;",
+      "}",
+      "var st = null;",
+      "racines().forEach(function (n) {",
+      "  try {",
+      "    var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get && !st) { st = p._s.get('engine'); }",
+      "  } catch (e) {}",
+      "});",
+      "if (!st) { return 'magasin introuvable'; }",
+      "if (typeof st.setZoom !== 'function') { return 'setZoom absent (zoom=' + st.zoom + ')'; }",
+      "var avant = st.zoom; st.setZoom(arguments[0]);",
+      "return avant + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("  dézoom : " + dez);
+    await dors(3000);
+
+    const dedansEcran = await driver.executeScript(PROJETTE, cible.x, cible.y);
+    console.log("  toile " + dedansEcran.l + " x " + dedansEcran.h +
+      "   chez lui tombe en (" + dedansEcran.x + ", " + dedansEcran.y + ")");
+
+    /* On cherche un point HORS PAGE qui soit franchement dans la toile : juste
+     * au-dessus du bord haut, en descendant jusqu'à ce que ça tienne. */
+    let haut = null, ou = null;
+    for (const y of [-70, -140, -210, -280, -420]) {
+      const p = await driver.executeScript(PROJETTE, cible.x, y);
+      const dedans = p.x > 40 && p.x < p.l - 40 && p.y > 40 && p.y < p.h - 40;
+      console.log("    y = " + y + "  →  écran (" + p.x + ", " + p.y + ")   " +
+        (dedans ? "DANS la toile" : "hors de la toile"));
+      if (dedans && haut === null) { haut = y; ou = p; }
+    }
+    if (haut === null) {
+      console.log("\n  aucun point hors page ne tombe dans la toile à ce cadrage :");
+      console.log("  l'épreuve ne peut RIEN conclure, et « horspage » non plus.");
+      return 1;
+    }
+    console.log("\n  on éprouve en y = " + haut + ", qui tombe en (" + ou.x + ", " + ou.y + ")");
+
+    const stab1 = await photo("cadre-stab-1");
+    const stab2 = await photo("cadre-stab-2");
+    if (stab1 !== stab2) { console.log("  la vue bouge seule : on s'arrête."); return 1; }
+
+    const LOIN = 99999;
+    await bouge(cible.i, LOIN, LOIN);
+    const loin = await photo("cadre-loin");
+    await bouge(cible.i, cible.x, cible.y);
+    const chez = await photo("cadre-chez");
+    await bouge(cible.i, cible.x, haut);
+    const dehors = await photo("cadre-dehors");
+    await bouge(cible.i, cible.x, cible.y);
+
+    console.log("\n  au loin      " + loin);
+    console.log("  chez lui     " + chez);
+    console.log("  hors page    " + dehors);
+
+    console.log("\n  ──────────────────────────────────────────────");
+    if (chez === loin) {
+      console.log("  TÉMOIN EN ÉCHEC : chez lui non plus il ne fait aucune différence.");
+      return 1;
+    }
+    console.log("  témoin : chez lui, l'image diffère du loin.");
+    const cache = (dehors === loin);
+    console.log("  hors page, à un point DONT ON A VÉRIFIÉ qu'il est à l'écran :");
+    console.log("  " + (cache ? "IL N'EST PAS DESSINÉ. Roll20 le cache bel et bien."
+                              : "IL EST DESSINÉ. Il n'y a rien à réparer ici."));
+
+    releve("cadre-" + quelle + ".json",
+      { cible: cible, haut: haut, ou: ou, loin: loin, chez: chez, dehors: dehors, cache: cache });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- COMBIEN DE PIXELS, ET LESQUELS ? ----------
+ *
+ * « cadre2 » a établi qu'une fois le point visé VRAIMENT à l'écran, le jeton
+ * hors page laisse une trace : l'empreinte diffère de celle du loin. Une
+ * empreinte ne dit pourtant que « ça diffère ». Elle ne dit pas quoi.
+ *
+ * Et il y a de quoi se tromper : un jeton n'est pas UN maillage mais trois —
+ * l'image, le contour, les barres. Le nuanceur peut parfaitement jeter l'image
+ * et laisser le reste, auquel cas la trace existe, l'empreinte change, et le
+ * joueur ne voit toujours pas son jeton. C'est même exactement ce dont on se
+ * plaint.
+ *
+ * On compte donc. La même vue, le jeton au loin puis à la place éprouvée, et la
+ * différence pixel à pixel — combien, et dans quel rectangle. Chez lui sert
+ * d'étalon : c'est ce que « tout le jeton » vaut, en pixels, à ce cadrage.
+ */
+async function combienDePixels() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function bouge(i, g, h) {
+      await driver.executeScript(
+        "var m = window.Campaign.activePage().thegraphics.models;" +
+        "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
+      await dors(2800);
+    }
+
+    /* La différence se calcule DANS LA PAGE : deux captures redessinées dans un
+     * canevas détaché, puis lues. Node n'a pas de quoi ouvrir un PNG, et lui en
+     * ajouter un serait une dépendance de plus pour une soustraction. */
+    async function differe(aB64, bB64) {
+      return await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        "  var cnt = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    if (Math.abs(a[i] - b[i]) < 8 && Math.abs(a[i+1] - b[i+1]) < 8 &&",
+        "        Math.abs(a[i+2] - b[i+2]) < 8) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++;",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  cb({ pixels: cnt, boite: cnt ? [x0, y0, x1 - x0 + 1, y1 - y0 + 1] : null });",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = function () { cb({ erreur: 'A' }); };",
+        "B.onerror = function () { cb({ erreur: 'B' }); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), aB64, bB64);
+    }
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "var pg = window.Campaign.activePage();",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top'),",
+      "             l: g[i].get('width'), h: g[i].get('height'),",
+      "             page: [pg.get('width') * 70, pg.get('height') * 70] };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")  " +
+      cible.l + " x " + cible.h + " px   page " + Math.round(cible.page[0]) +
+      " x " + Math.round(cible.page[1]));
+
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("  dézoom : " + dez);
+    await dors(3000);
+
+    const LOIN = 99999;
+    await bouge(cible.i, LOIN, LOIN);
+    const loin = await driver.takeScreenshot();
+
+    /* L'ÉTALON : tout le jeton, chez lui, à ce cadrage. */
+    await bouge(cible.i, cible.x, cible.y);
+    const etalon = await differe(loin, await driver.takeScreenshot());
+    console.log("\n  chez lui (" + cible.x + ", " + cible.y + ")   " +
+      etalon.pixels + " pixels   boîte " + JSON.stringify(etalon.boite));
+    if (!etalon.pixels) { console.log("  l'instrument ne voit pas le jeton chez lui : rien à conclure."); return 1; }
+
+    /* ET MAINTENANT, HORS PAGE, DE PLUS EN PLUS LOIN DU BORD. */
+    const mesures = [];
+    for (const y of [-70, -140, -280, -420]) {
+      await bouge(cible.i, cible.x, y);
+      const d = await differe(loin, await driver.takeScreenshot());
+      const part = Math.round((d.pixels / etalon.pixels) * 100);
+      mesures.push({ y: y, pixels: d.pixels, boite: d.boite, part: part });
+      console.log("  hors page y = " + String(y).padStart(5) + "   " +
+        String(d.pixels).padStart(6) + " pixels   " + String(part).padStart(3) + " % de l'étalon" +
+        "   boîte " + JSON.stringify(d.boite));
+    }
+    await bouge(cible.i, cible.x, cible.y);
+
+    console.log("\n  ──────────────────────────────────────────────");
+    const loinDuBord = mesures[mesures.length - 1];
+    if (!loinDuBord.pixels) {
+      console.log("  Loin du bord, plus rien du tout : le jeton est bel et bien caché.");
+    } else if (loinDuBord.part >= 60) {
+      console.log("  Le jeton est dessiné hors page, à " + loinDuBord.part + " % de ce qu'il vaut");
+      console.log("  chez lui. Il n'est PAS caché — pas dans cette partie, pas à ce rôle.");
+    } else {
+      console.log("  Il ne reste que " + loinDuBord.part + " % : ce n'est pas le jeton qui survit,");
+      console.log("  ce sont ses accessoires — contour, barres, étiquette. L'image, elle,");
+      console.log("  est bien jetée, et c'est exactement le défaut dont on se plaint.");
+    }
+
+    releve("combien-" + quelle + ".json", { cible: cible, etalon: etalon, mesures: mesures });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- LE LEVIER MORD-IL, UNE FOIS L'ÉPREUVE CADRÉE ? ----------
+ *
+ * Ce qu'on sait, mesuré, et cette fois avec un témoin :
+ *
+ *   MJ,     hors page : 105 à 109 % des pixels qu'il vaut chez lui — entier.
+ *   Joueur, hors page :  11 % — un fragment de 6 x 7, et rien d'autre.
+ *   MJ     : u_Board = [l, h, 1, 0]      joueur : u_Board = [l, h, 0, 1]
+ *   Nuanceur : if (offBoard && v_Board.z == 0.) { discard; }
+ *
+ * L'écart tient au rôle, et il tient à z. La voie 2 visait juste.
+ *
+ * Ce qui ne valait rien, c'est le verdict porté sur elle. « portee » posait
+ * z = 1 puis photographiait le jeton en y = -260 — hors de l'écran à ce cadrage,
+ * comme « cadre2 » l'a montré depuis. Ses deux empreintes identiques ne
+ * disaient rien du levier : elles disaient que rien n'était visible, avant
+ * comme après.
+ *
+ * On refait donc l'épreuve, cadrée, et on compte les pixels au lieu de comparer
+ * des empreintes. Le levier mord si le joueur passe de 11 % à l'étalon.
+ */
+async function leLevierMord() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function bouge(i, g, h) {
+      await driver.executeScript(
+        "var m = window.Campaign.activePage().thegraphics.models;" +
+        "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
+      await dors(2800);
+    }
+
+    async function differe(aB64, bB64) {
+      return await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        "  var cnt = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    if (Math.abs(a[i] - b[i]) < 8 && Math.abs(a[i+1] - b[i+1]) < 8 &&",
+        "        Math.abs(a[i+2] - b[i+2]) < 8) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++;",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  cb({ pixels: cnt, boite: cnt ? [x0, y0, x1 - x0 + 1, y1 - y0 + 1] : null });",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = function () { cb({ erreur: 'A' }); };",
+        "B.onerror = function () { cb({ erreur: 'B' }); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), aB64, bB64);
+    }
+
+    /* Poser z, et RELIRE. La relecture est le point : elle sépare « le levier ne
+     * marche pas » de « l'écriture n'a pas tenu », et ces deux-là appellent des
+     * suites opposées. */
+    async function poseZ(z) {
+      return await driver.executeScript([
+        /* On retient la valeur AVANT le parcours : dans un rappel, `arguments`
+         * est celui du rappel, pas celui du script. */
+        "var Z = arguments[0];",
+        "var S = window.MeshScene, n = 0, e = 0;",
+        "S.meshes.forEach(function (m) {",
+        "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+        "  if (b) { b.z = Z; n++; }",
+        "  (m.instances || []).forEach(function (i) {",
+        "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
+        "    if (c) { c.z = Z; e++; }",
+        "  });",
+        "});",
+        "return { sources: n, instances: e };"
+      ].join("\n"), z);
+    }
+    async function relis() {
+      return await driver.executeScript([
+        "var S = window.MeshScene, out = [];",
+        "S.meshes.forEach(function (m) {",
+        "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+        "  if (b) { out.push([b.x, b.y, b.z, b.w]); }",
+        "  (m.instances || []).forEach(function (i) {",
+        "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
+        "    if (c) { out.push([c.x, c.y, c.z, c.w]); }",
+        "  });",
+        "});",
+        "return out.slice(0, 6);"
+      ].join("\n"));
+    }
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top') };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")");
+
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("  dézoom : " + dez);
+    await dors(3000);
+    console.log("  u_Board au départ : " + JSON.stringify(await relis()));
+
+    const LOIN = 99999, HAUT = -280;
+    await bouge(cible.i, LOIN, LOIN);
+    const loin = await driver.takeScreenshot();
+
+    await bouge(cible.i, cible.x, cible.y);
+    const etalon = await differe(loin, await driver.takeScreenshot());
+    console.log("\n  étalon — chez lui        " + String(etalon.pixels).padStart(6) +
+      " pixels   boîte " + JSON.stringify(etalon.boite));
+    if (!etalon.pixels) { console.log("  l'instrument est aveugle : rien à conclure."); return 1; }
+
+    await bouge(cible.i, cible.x, HAUT);
+    const avant = await differe(loin, await driver.takeScreenshot());
+    console.log("  hors page, sans levier   " + String(avant.pixels).padStart(6) +
+      " pixels   " + Math.round(avant.pixels / etalon.pixels * 100) + " %   boîte " +
+      JSON.stringify(avant.boite));
+
+    const pose = await poseZ(1);
+    await dors(2500);
+    const apres = await differe(loin, await driver.takeScreenshot());
+    const relu = await relis();
+    console.log("  hors page, AVEC levier   " + String(apres.pixels).padStart(6) +
+      " pixels   " + Math.round(apres.pixels / etalon.pixels * 100) + " %   boîte " +
+      JSON.stringify(apres.boite));
+    console.log("  écrit sur " + pose.sources + " source(s) et " + pose.instances + " instance(s)");
+    console.log("  u_Board relu : " + JSON.stringify(relu));
+
+    console.log("\n  ──────────────────────────────────────────────");
+    const tenu = relu.length && relu.every(function (v) { return v[2] === 1; });
+    const part = Math.round(apres.pixels / etalon.pixels * 100);
+    if (!tenu) {
+      console.log("  L'ÉCRITURE N'A PAS TENU : z est retombé. Roll20 réécrit le tampon,");
+      console.log("  et le levier doit se poser à chaque image, pas une fois.");
+    } else if (part >= 60) {
+      console.log("  LE LEVIER MORD. z = 1 par instance, et le joueur voit son jeton");
+      console.log("  hors page à " + part + " % de ce qu'il vaut chez lui.");
+    } else {
+      console.log("  z tient à 1, et pourtant il n'y a que " + part + " % de pixels.");
+      console.log("  Le tampon n'est donc pas seul à décider : autre chose jette l'image.");
+    }
+
+    await poseZ(quelle === "mj" ? 1 : 0);
+    await bouge(cible.i, cible.x, cible.y);
+    console.log("  jeton remis en (" + cible.x + ", " + cible.y + "), z remis");
+    releve("mord-" + quelle + ".json",
+      { cible: cible, etalon: etalon, avant: avant, apres: apres, pose: pose, relu: relu });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- CE LEVIER MONTRE-T-IL AUTRE CHOSE QUE LE BORD DE PAGE ? ----------
+ *
+ * Poser z = 1 dans u_Board, c'est lever le drapeau que Roll20 réserve au MJ :
+ *
+ *     u_Board = new Vector4(largeur, hauteur, gmMode ? 1 : 0, ...)
+ *
+ * Le nuanceur ne s'en sert, à notre connaissance, que pour une chose — ne pas
+ * jeter ce qui déborde de la page. « À notre connaissance » ne suffit pas quand
+ * la question est : est-ce qu'un joueur va voir ce que le MJ lui cache ?
+ *
+ * Deux mesures répondent, et aucune ne demande de croire à une lecture de code.
+ *
+ *   1. Le client d'un joueur REÇOIT-IL seulement les objets de la couche du MJ ?
+ *      Si le serveur ne les envoie pas, il n'y a rien à révéler, quoi qu'on
+ *      fasse au nuanceur.
+ *
+ *   2. Le levier posé, l'écran change-t-il AILLEURS que hors page ? On compare
+ *      la même vue, jeton chez lui, avec et sans. Zéro pixel de différence est
+ *      la seule réponse acceptable.
+ */
+async function sureteDuLevier() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function differe(aB64, bB64) {
+      return await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        "  var cnt = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    if (Math.abs(a[i] - b[i]) < 8 && Math.abs(a[i+1] - b[i+1]) < 8 &&",
+        "        Math.abs(a[i+2] - b[i+2]) < 8) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++;",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  cb({ pixels: cnt, boite: cnt ? [x0, y0, x1 - x0 + 1, y1 - y0 + 1] : null });",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = function () { cb({ erreur: 'A' }); };",
+        "B.onerror = function () { cb({ erreur: 'B' }); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), aB64, bB64);
+    }
+
+    async function poseZ(z) {
+      return await driver.executeScript([
+        "var Z = arguments[0], S = window.MeshScene, n = 0;",
+        "S.meshes.forEach(function (m) {",
+        "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+        "  if (b) { b.z = Z; n++; }",
+        "  (m.instances || []).forEach(function (i) {",
+        "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
+        "    if (c) { c.z = Z; n++; }",
+        "  });",
+        "});",
+        "return n;"
+      ].join("\n"), z);
+    }
+
+    /* ---------- 1. LE CLIENT REÇOIT-IL LA COUCHE DU MJ ? ---------- */
+    const couches = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "var par = {};",
+      "g.forEach(function (t) {",
+      "  var c = String(t.get('layer'));",
+      "  par[c] = (par[c] || 0) + 1;",
+      "});",
+      "var p = window.Campaign.activePage();",
+      "return { couches: par, total: g.length,",
+      "  chemins: p.thepaths ? p.thepaths.length : null,",
+      "  textes: p.thetexts ? p.thetexts.length : null };"
+    ].join("\n"));
+    console.log("\n  -- 1. CE QUE CE CLIENT A REÇU --");
+    console.log("    " + JSON.stringify(couches.couches) + "   (" + couches.total + " objets)");
+    console.log("    chemins " + couches.chemins + "   textes " + couches.textes);
+    const cachees = Object.keys(couches.couches).filter(function (c) {
+      return c === "gmlayer" || c === "walls";
+    });
+    if (cachees.length) {
+      console.log("    ATTENTION : ce client détient " +
+        cachees.map(function (c) { return couches.couches[c] + " sur « " + c + " »"; }).join(", ") + ".");
+    } else {
+      console.log("    aucune couche réservée au MJ dans ce client.");
+    }
+
+    /* ---------- 2. LE LEVIER CHANGE-T-IL L'ÉCRAN AILLEURS ? ---------- */
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("\n  -- 2. LE LEVIER CHANGE-T-IL L'ÉCRAN AILLEURS ? --");
+    console.log("    dézoom : " + dez + "   (toute la page à l'écran)");
+    await dors(3000);
+
+    /* Le témoin de l'instrument : deux photos de suite, sans rien toucher. Si
+     * elles diffèrent déjà, la mesure d'après ne veut rien dire. */
+    const t1 = await driver.takeScreenshot();
+    await dors(2000);
+    const t2 = await driver.takeScreenshot();
+    const bruit = await differe(t1, t2);
+    console.log("    bruit de fond : " + bruit.pixels + " pixels");
+    if (bruit.pixels > 20) {
+      console.log("    la vue ne tient pas en place : on ne conclut pas.");
+      return 1;
+    }
+
+    const n = await poseZ(1);
+    await dors(2500);
+    const apres = await differe(t2, await driver.takeScreenshot());
+    console.log("    levier posé sur " + n + " tampon(s)");
+    console.log("    différence à l'écran : " + apres.pixels + " pixels   boîte " +
+      JSON.stringify(apres.boite));
+
+    await poseZ(quelle === "mj" ? 1 : 0);
+    await dors(1500);
+
+    console.log("\n  ──────────────────────────────────────────────");
+    const propre = apres.pixels <= Math.max(20, bruit.pixels);
+    if (cachees.length) {
+      console.log("  Ce client DÉTIENT des objets de couche réservée : le levier doit être");
+      console.log("  éprouvé sur eux avant d'être livré.");
+    } else if (propre) {
+      console.log("  Le levier ne change RIEN à l'écran tant que rien ne déborde de la page");
+      console.log("  (" + apres.pixels + " pixels, pour " + bruit.pixels + " de bruit de fond), et ce client");
+      console.log("  n'a reçu aucun objet de couche réservée. Il ne révèle donc que le bord.");
+    } else {
+      console.log("  Le levier change " + apres.pixels + " pixels alors que rien ne déborde.");
+      console.log("  Il touche donc à autre chose, et il faut savoir quoi avant de livrer.");
+    }
+
+    releve("surete-" + quelle + ".json",
+      { couches: couches, bruit: bruit, apres: apres, tampons: n, cachees: cachees });
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- À QUOI SERT z, DANS LE NUANCEUR COMPILÉ ? ----------
+ *
+ * On s'apprête à forcer z = 1 chez un joueur. z est le drapeau « MJ » que
+ * Roll20 pose dans u_Board. Tant qu'on ne sait pas TOUT ce que le nuanceur en
+ * fait, on ne sait pas ce que le module révèle.
+ *
+ * Deux mesures l'ont déjà cerné par l'extérieur — zéro pixel de changement tant
+ * que rien ne déborde, et aucun objet de couche réservée dans le client. Ni
+ * l'une ni l'autre ne vaut une lecture : la première ne prouve rien pour une
+ * page qui aurait de tels objets, la seconde ne prouve rien pour une table où le
+ * MJ en pose.
+ *
+ * La source du programme compilé, elle, est le texte que la carte exécute. On la
+ * demande à Babylon, et on regarde chaque ligne qui parle de Board.
+ */
+async function litLeNuanceur() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    const src = await driver.executeScript([
+      "var S = window.MeshScene, vus = {}, out = [];",
+      "S.meshes.forEach(function (m) {",
+      "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+      "  if (!b || !m.material) { return; }",
+      "  var e = null;",
+      "  try { e = m.material.getEffect ? m.material.getEffect() : null; } catch (err) {}",
+      "  if (!e) { return; }",
+      "  var cle = String(e.name && e.name.fragment ? e.name.fragment : e.name || m.material.name);",
+      "  if (vus[cle]) { return; }",
+      "  vus[cle] = 1;",
+      "  out.push({ cle: cle,",
+      "    sommet: String(e.vertexSourceCode || e._vertexSourceCode || ''),",
+      "    fragment: String(e.fragmentSourceCode || e._fragmentSourceCode || '') });",
+      "});",
+      "return out;"
+    ].join("\n"));
+
+    if (!src.length) { console.log("  aucun programme lisible sur les maillages qui portent u_Board."); return 1; }
+
+    let total = 0;
+    src.forEach(function (p) {
+      console.log("\n  ══ " + p.cle + " ══");
+      ["sommet", "fragment"].forEach(function (quoi) {
+        const t = p[quoi] || "";
+        if (!t) { console.log("    [" + quoi + "] source absente"); return; }
+        const lignes = t.split(/\r?\n/);
+        const gardees = [];
+        lignes.forEach(function (l, i) {
+          if (!/Board/.test(l)) { return; }
+          gardees.push(String(i + 1).padStart(5) + " │ " + l.trim());
+        });
+        console.log("    [" + quoi + "] " + lignes.length + " lignes, " +
+          gardees.length + " parlent de Board");
+        gardees.forEach(function (l) { console.log("      " + l); });
+        total += gardees.length;
+        /* Et le contexte de chaque emploi de .z, qui est la question. */
+        lignes.forEach(function (l, i) {
+          if (!/Board\s*\.\s*z|Board\[2\]/.test(l)) { return; }
+          console.log("      ── emploi de z, ligne " + (i + 1) + " ──");
+          for (let k = Math.max(0, i - 3); k <= Math.min(lignes.length - 1, i + 3); k++) {
+            console.log("         " + (k === i ? ">" : " ") + " " + lignes[k].trim());
+          }
+        });
+      });
+    });
+
+    console.log("\n  ──────────────────────────────────────────────");
+    console.log("  " + src.length + " programme(s), " + total + " ligne(s) citant Board.");
+    releve("nuanceur-" + quelle + ".json", src);
+    return 0;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
+/* ---------- LE MODULE « JETONS HORS CARTE », ÉPROUVÉ POUR DE BON ----------
+ *
+ * Pas de levier posé à la main : l'extension est chargée, le module s'allume
+ * tout seul, et l'on regarde ce qu'un joueur voit. C'est la seule mesure qui
+ * porte sur ce qui sera livré.
+ *
+ * ELLE COMPTE DES PIXELS, ET ELLE CADRE. Les deux fautes qui ont fait tourner
+ * cette enquête en rond sont là : comparer des empreintes quand le jeton a
+ * bougé (ça change toujours), et viser un point hors de l'écran (ça ne montre
+ * jamais rien). On dézoome donc pour dégager la marge, on vérifie par la caméra
+ * que le point visé y tombe, et on compare au jeton envoyé à l'infini.
+ *
+ * ET ELLE ÉPROUVE L'EXTINCTION. Un module qui allume sans éteindre laisse la
+ * partie de travers, et c'est plus grave que de ne pas s'allumer.
+ */
+async function epreuveHorsPage() {
+  const quelle = (process.argv[3] || "joueur").toLowerCase();
+  const driver = await ouvre(config().visible === true);
+  try {
+    await poseExtension(driver);
+    const id = quelle === "mj" ? partieDEssai("mj") : partieDEssai("joueur");
+    if (!(await vaALaPartie(driver, id))) { console.log("La partie ne s'est pas chargée."); return 1; }
+    if (!(await attendPont(driver, 50))) { console.log("Le pont ne s'est pas injecté."); return 1; }
+    await dors(15000);
+
+    async function differe(aB64, bB64) {
+      return await driver.executeAsyncScript([
+        "var cb = arguments[arguments.length - 1];",
+        "var A = new Image(), B = new Image(), n = 0;",
+        "function pret() {",
+        "  if (++n < 2) { return; }",
+        "  var c = document.createElement('canvas');",
+        "  c.width = A.width; c.height = A.height;",
+        "  var g = c.getContext('2d', { willReadFrequently: true });",
+        "  g.drawImage(A, 0, 0); var a = g.getImageData(0, 0, c.width, c.height).data;",
+        "  g.clearRect(0, 0, c.width, c.height);",
+        "  g.drawImage(B, 0, 0); var b = g.getImageData(0, 0, c.width, c.height).data;",
+        "  var cnt = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;",
+        "  for (var i = 0; i < a.length; i += 4) {",
+        "    if (Math.abs(a[i] - b[i]) < 8 && Math.abs(a[i+1] - b[i+1]) < 8 &&",
+        "        Math.abs(a[i+2] - b[i+2]) < 8) { continue; }",
+        "    var p = i / 4, x = p % c.width, y = (p - x) / c.width;",
+        "    cnt++;",
+        "    if (x < x0) { x0 = x; } if (x > x1) { x1 = x; }",
+        "    if (y < y0) { y0 = y; } if (y > y1) { y1 = y; }",
+        "  }",
+        "  cb({ pixels: cnt, boite: cnt ? [x0, y0, x1 - x0 + 1, y1 - y0 + 1] : null });",
+        "}",
+        "A.onload = pret; B.onload = pret;",
+        "A.onerror = function () { cb({ erreur: 'A' }); };",
+        "B.onerror = function () { cb({ erreur: 'B' }); };",
+        "A.src = 'data:image/png;base64,' + arguments[0];",
+        "B.src = 'data:image/png;base64,' + arguments[1];"
+      ].join("\n"), aB64, bB64);
+    }
+    async function bouge(i, g, h) {
+      await driver.executeScript(
+        "var m = window.Campaign.activePage().thegraphics.models;" +
+        "m[arguments[0]].save({ left: arguments[1], top: arguments[2] });", i, g, h);
+      await dors(2800);
+    }
+    async function zLus() {
+      return await driver.executeScript([
+        "var S = window.MeshScene, out = [];",
+        "S.meshes.forEach(function (m) {",
+        "  var b = m.instancedBuffers && m.instancedBuffers.u_Board;",
+        "  if (b) { out.push(b.z); }",
+        "  (m.instances || []).forEach(function (i) {",
+        "    var c = i.instancedBuffers && i.instancedBuffers.u_Board;",
+        "    if (c) { out.push(c.z); }",
+        "  });",
+        "});",
+        "return out;"
+      ].join("\n"));
+    }
+    /* On éteint par le MÊME message que le socle envoie — même en-tête, même
+     * cible nommée. Le pont refuse tout le reste depuis qu'il valide l'origine :
+     * un message forgé « à peu près » ne serait pas lu, et l'épreuve conclurait
+     * « ça ne s'éteint pas » alors qu'on aurait mal frappé à la porte. */
+    async function interrupteur(actif) {
+      await driver.executeScript(
+        "window.top.postMessage({ ns: 'vttinker', depuis: 'contenu'," +
+        " type: 'horspage', actif: arguments[0] }, location.origin);", actif);
+      await dors(2500);
+    }
+
+    const cible = await driver.executeScript([
+      "var g = window.Campaign.activePage().thegraphics.models;",
+      "for (var i = 0; i < g.length; i++) {",
+      "  if (String(g[i].get('layer')) === 'objects') {",
+      "    return { i: i, id: String(g[i].id).slice(-6), x: g[i].get('left'), y: g[i].get('top') };",
+      "  }",
+      "}", "return null;"
+    ].join("\n"));
+    if (!cible) { console.log("  aucun jeton sur la couche des jetons"); return 1; }
+    console.log("\n  jeton …" + cible.id + " en (" + cible.x + ", " + cible.y + ")");
+
+    const dez = await driver.executeScript([
+      "var st = null;",
+      "document.querySelectorAll('*').forEach(function (n) {",
+      "  if (st || !n.__vue_app__) { return; }",
+      "  try { var p = n.__vue_app__.config.globalProperties.$pinia;",
+      "    if (p && p._s && p._s.get) { st = p._s.get('engine'); } } catch (e) {}",
+      "});",
+      "if (!st || typeof st.setZoom !== 'function') { return 'magasin absent'; }",
+      "var a = st.zoom; st.setZoom(arguments[0]); return a + ' -> ' + st.zoom;"
+    ].join("\n"), 30);
+    console.log("  dézoom : " + dez);
+    await dors(3000);
+
+    const z0 = await zLus();
+    console.log("  z lus, module allumé : " + JSON.stringify(z0));
+
+    const LOIN = 99999, HAUT = -280;
+    await bouge(cible.i, LOIN, LOIN);
+    const loin = await driver.takeScreenshot();
+    await bouge(cible.i, cible.x, cible.y);
+    const etalon = await differe(loin, await driver.takeScreenshot());
+    console.log("\n  étalon — chez lui           " + String(etalon.pixels).padStart(6) +
+      " pixels   boîte " + JSON.stringify(etalon.boite));
+    if (!etalon.pixels) { console.log("  instrument aveugle : rien à conclure."); return 1; }
+
+    await bouge(cible.i, cible.x, HAUT);
+    const allume = await differe(loin, await driver.takeScreenshot());
+    const partA = Math.round(allume.pixels / etalon.pixels * 100);
+    console.log("  hors page, module ALLUMÉ    " + String(allume.pixels).padStart(6) +
+      " pixels   " + partA + " %   boîte " + JSON.stringify(allume.boite));
+
+    /* ---------- ET L'EXTINCTION ---------- */
+    await interrupteur(false);
+    const z1 = await zLus();
+    const eteint = await differe(loin, await driver.takeScreenshot());
+    const partE = Math.round(eteint.pixels / etalon.pixels * 100);
+    console.log("  hors page, module ÉTEINT    " + String(eteint.pixels).padStart(6) +
+      " pixels   " + partE + " %   boîte " + JSON.stringify(eteint.boite));
+    console.log("  z lus, module éteint : " + JSON.stringify(z1));
+
+    /* ---------- ET LE RALLUMAGE ---------- */
+    await interrupteur(true);
+    const rallume = await differe(loin, await driver.takeScreenshot());
+    const partR = Math.round(rallume.pixels / etalon.pixels * 100);
+    console.log("  hors page, RALLUMÉ          " + String(rallume.pixels).padStart(6) +
+      " pixels   " + partR + " %");
+
+    await bouge(cible.i, cible.x, cible.y);
+
+    console.log("\n  ──────────────────────────────────────────────");
+    const mj = quelle === "mj";
+    const bon = partA >= 60 && (mj ? partE >= 60 : partE <= 25) && partR >= 60;
+    console.log("  allumé, le jeton hors page vaut " + partA + " % de ce qu'il vaut chez lui");
+    console.log("  éteint, " + partE + " %" + (mj
+      ? "   (le MJ le voit de toute façon : Roll20 lui donne déjà le drapeau)"
+      : "   (rendu à Roll20 : le joueur ne le voit plus)"));
+    console.log("  rallumé, " + partR + " %");
+    console.log("  " + (bon ? "LE MODULE FAIT CE QU'IL DIT, ET IL SE REND."
+                            : "CE N'EST PAS CE QU'ON ATTENDAIT."));
+
+    releve("epreuve-horspage-" + quelle + ".json",
+      { cible: cible, etalon: etalon, allume: allume, eteint: eteint, rallume: rallume,
+        z0: z0, z1: z1, bon: bon });
+    return bon ? 0 : 1;
+  } finally {
+    await dors(600);
+    await driver.quit().catch(() => {});
+  }
+}
+
 /* ---------- reconnaissance ---------- */
 
 
@@ -16122,7 +17287,7 @@ async function loupe(spec) {
                    loupe: () => loupe(arg), suivi, derive,
                    densite: () => densite(arg), familles: () => familles(arg),
                    cout: () => cout(arg), shader: () => shader(arg),
-                   essai: () => essaiShader(arg), frustum: () => frustum(arg), veille: () => veille(arg), reperes: () => reperes(arg), cadres, pese: () => pese(arg), marqueurs, marqueur: () => poseMarqueur(arg), perso: marqueurPerso, rendu: rendudesMarqueurs, faits: faitsMarqueurs, ui: uiMarqueurs, code: codeMarqueurs, injecte: injecteMarqueur, image: () => imageEtrangere(arg), place: placeMarqueurs, pas: pasMarqueurs, rangee: rangeeMarqueurs, qui, etat: etatMarqueurs, fond: fondMarqueurs, colle: colleMarqueur, voir: voirMarqueurs, menu: menuMarqueurs, choix: choixMarqueurs, poser: poserMarqueur, partage: partageMarqueurs, cycle: cycleDocument, vrai: vraiPartage, fusion: fusionRoll20, tot: fusionTot, outils: barreRoll20, theme: themeRoll20, vttk: sectionVTTK, manque: manqueEtEtiquette, source: sourceMarqueurs, rangee2: rangeeOccupation, reduction: loiReduction, complete: rangeeComplete, nettoie: nettoieTokens, cas: casCapture, reel: etatReel, compteur: compteurRoll20, chiffre: chiffreRoll20, pixels: chiffrePixels, compte: quiCompte, pro: paletteProfessionnelle, gestes: gestesPalette, rame: pourquoiCaRame, cran: coutDunCran, gel: gelDifferre, coupable: quiGele, lourd: zoomLourd, travail: quiTravaille, crans: cranParCran, cible: cibleMolette, long: gesteLong, camseule: cameraSeule, salut: salutParties, audit: auditJoueur, epreuve: epreuveJoueur, bascule: basculeControle, selection: ouEstLaSelection, modes: deuxModes, ecart: ecartDesFenetres, pastilles: deuxPastilles, chat: zoneDeChat, destinataire: ligneDestinataire, largeur: largeurDuChat, aligne: aligneDuChat, emoji: emojisDuChat, fluide: fluiditeDuZoom, ouca: ouEstLeCout, appel: quelAppelCoute, abonne: abonnementCoupable, garde: gardeDeLaCamera, style: styleDeRoll20, surfaces: surfacesVTTK, couche: coucheHorsCarte, cout2: coutDeLaVoie2, preuve: preuveVoie2, acces: accesJoueur, campagnes: listeDesCampagnes, version: versionDeRoll20, essaichat: essaiDuChat, ancien: ancienMoteur, zoomancien: zoomAncien, reperes2: reperesHeritage, commande: quiCommandeLeZoom, pasancien: pasDeLancien, tablo: tableauDeBordAncien, porte: porteDuZoom, borne: borneDeLancien, srczoom: sourceDuZoom, zh: epreuveZoomHerite, boucle: battementAncien, marqh: marqueursHeritage, vue: vueHeritage, loi: loiDeLaRangee, emh: epreuveMarqueursHerites, grh: grilleHeritage, srcg: sourceDeLaGrille, dg: drawGridChezNous, egh: epreuveGrilleHeritee, jg: jumpgateSansRegression, coutp: coutDesPeintres, proto: protocoleApresGardes };
+                   essai: () => essaiShader(arg), frustum: () => frustum(arg), veille: () => veille(arg), reperes: () => reperes(arg), cadres, pese: () => pese(arg), marqueurs, marqueur: () => poseMarqueur(arg), perso: marqueurPerso, rendu: rendudesMarqueurs, faits: faitsMarqueurs, ui: uiMarqueurs, code: codeMarqueurs, injecte: injecteMarqueur, image: () => imageEtrangere(arg), place: placeMarqueurs, pas: pasMarqueurs, rangee: rangeeMarqueurs, qui, etat: etatMarqueurs, fond: fondMarqueurs, colle: colleMarqueur, voir: voirMarqueurs, menu: menuMarqueurs, choix: choixMarqueurs, poser: poserMarqueur, partage: partageMarqueurs, cycle: cycleDocument, vrai: vraiPartage, fusion: fusionRoll20, tot: fusionTot, outils: barreRoll20, theme: themeRoll20, vttk: sectionVTTK, manque: manqueEtEtiquette, source: sourceMarqueurs, rangee2: rangeeOccupation, reduction: loiReduction, complete: rangeeComplete, nettoie: nettoieTokens, cas: casCapture, reel: etatReel, compteur: compteurRoll20, chiffre: chiffreRoll20, pixels: chiffrePixels, compte: quiCompte, pro: paletteProfessionnelle, gestes: gestesPalette, rame: pourquoiCaRame, cran: coutDunCran, gel: gelDifferre, coupable: quiGele, lourd: zoomLourd, travail: quiTravaille, crans: cranParCran, cible: cibleMolette, long: gesteLong, camseule: cameraSeule, salut: salutParties, audit: auditJoueur, epreuve: epreuveJoueur, bascule: basculeControle, selection: ouEstLaSelection, modes: deuxModes, ecart: ecartDesFenetres, pastilles: deuxPastilles, chat: zoneDeChat, destinataire: ligneDestinataire, largeur: largeurDuChat, aligne: aligneDuChat, emoji: emojisDuChat, fluide: fluiditeDuZoom, ouca: ouEstLeCout, appel: quelAppelCoute, abonne: abonnementCoupable, garde: gardeDeLaCamera, style: styleDeRoll20, surfaces: surfacesVTTK, couche: coucheHorsCarte, cout2: coutDeLaVoie2, preuve: preuveVoie2, dessine: estIlDessine, portee: porteeDuBoard, cadre2: cadreHorsPage, combien: combienDePixels, mord: leLevierMord, surete: sureteDuLevier, nuanceur: litLeNuanceur, ehp: epreuveHorsPage, acces: accesJoueur, campagnes: listeDesCampagnes, version: versionDeRoll20, essaichat: essaiDuChat, ancien: ancienMoteur, zoomancien: zoomAncien, reperes2: reperesHeritage, commande: quiCommandeLeZoom, pasancien: pasDeLancien, tablo: tableauDeBordAncien, porte: porteDuZoom, borne: borneDeLancien, srczoom: sourceDuZoom, zh: epreuveZoomHerite, boucle: battementAncien, marqh: marqueursHeritage, vue: vueHeritage, loi: loiDeLaRangee, emh: epreuveMarqueursHerites, grh: grilleHeritage, srcg: sourceDeLaGrille, dg: drawGridChezNous, egh: epreuveGrilleHeritee, jg: jumpgateSansRegression, coutp: coutDesPeintres, proto: protocoleApresGardes };
   const f = routes[commande];
   if (!f) {
     console.log("Commandes : connexion | session | recon | js \"<code>\" | journal | zoom");
